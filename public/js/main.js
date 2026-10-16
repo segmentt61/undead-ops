@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MAP, setMap, getMap, MAP_LIST, BOARDS_PER_WINDOW, T } from '/shared/map.js';
+import { MAP, setMap, getMap, MAP_LIST, BOARDS_PER_WINDOW, T, raycastWorld } from '/shared/map.js';
 import { PERKS, POWERUP_NAMES, BOX_COST, PAP_COST, PAP_AMMO_COST, REVIVE_TIME, REVIVE_TIME_QR, BLEEDOUT_TIME, SOLO_QR_TIME } from '/shared/config.js';
 import { WEAPONS, weaponStats } from '/shared/weapons.js';
 import { World } from './world.js';
@@ -21,7 +21,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 const $ = (id) => document.getElementById(id);
 
 // ------------------------------------------------------------------ settings
-const settings = { sens: 1, padSens: 1, touchSens: 1, aimAssist: true, vibration: true, adsSens: 0.8, fov: 85, vol: 0.7, music: 0.5, gfx: 'high', dynres: true, showFps: true, invertY: false, toggleAds: false, gore: 'extreme', crosshair: '#ffffff', rockMusic: true };
+const settings = { sens: 1, padSens: 1, touchSens: 1, aimAssist: true, vibration: true, adsSens: 0.8, fov: 85, vol: 0.7, music: 0.5, gfx: 'high', dynres: true, showFps: true, invertY: false, toggleAds: false, gore: 'extreme', crosshair: '#ffffff', rockMusic: true, autoFire: true, touchSize: 1 };
 const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome|Chromium|Edg|Firefox/.test(navigator.userAgent);
 // Safari's WebGL is slower, so it starts on Medium unless the player picked something
 if (isSafari) settings.gfx = 'medium';
@@ -423,7 +423,7 @@ $('settingsBtn').addEventListener('click', () => openSettings('menu'));
 $('pauseSettingsBtn').addEventListener('click', () => openSettings('pauseMenu'));
 $('settingsBack').addEventListener('click', () => showScreen(settingsReturn));
 
-const fmtSetting = { padSens: (v) => v.toFixed(2), touchSens: (v) => v.toFixed(2), sens: (v) => v.toFixed(2), adsSens: (v) => v.toFixed(2), fov: (v) => v, vol: (v) => Math.round(v * 100) + '%', music: (v) => Math.round(v * 100) + '%' };
+const fmtSetting = { touchSize: (v) => Math.round(v * 100) + '%', padSens: (v) => v.toFixed(2), touchSens: (v) => v.toFixed(2), sens: (v) => v.toFixed(2), adsSens: (v) => v.toFixed(2), fov: (v) => v, vol: (v) => Math.round(v * 100) + '%', music: (v) => Math.round(v * 100) + '%' };
 function applySetting(key) {
   if (key === 'vol') audio.setVolume(settings.vol);
   if (key === 'music') audio.setMusicVolume(settings.music);
@@ -432,6 +432,7 @@ function applySetting(key) {
   if (key === 'gore') { game.gore = settings.gore; goreCfg.level = settings.gore; }
   if (key === 'rockMusic') audio.rockEnabled = settings.rockMusic;
   if (key === 'toggleAds' && game.weapons) game.weapons.adsHeld = false;
+  if (key === 'touchSize') { try { touch.layout(settings.touchSize); } catch { /* touch UI not built yet */ } }
 }
 for (const el of document.querySelectorAll('[data-key]')) {
   const key = el.dataset.key;
@@ -1079,6 +1080,12 @@ function step(dt) {
       const k = 0.0042 * settings.touchSens * w.fovMult() * (1 - ads + ads * settings.adsSens) * (settings.aimAssist && aimOnTarget() ? 0.6 : 1);
       p.look(touchState.lookPx[0] * k / 0.0022, (settings.invertY ? -touchState.lookPx[1] : touchState.lookPx[1]) * k / 0.0022, 1);
       w.lookDX += touchState.lookPx[0]; w.lookDY += touchState.lookPx[1];
+      // auto-fire: shoot while the crosshair rests on a zombie that is in range and in sight
+      const auto = settings.autoFire && autoTarget();
+      if (auto && !touchState.fireHeld) { actions.trigger(false); actions.trigger(true); } // fresh pull, so semi-autos keep firing
+      else if (autoFiring && !touchState.fireHeld) actions.trigger(false);
+      autoFiring = auto;
+      if (auto) sprint = false;
     }
     p.update(dt, { f, r, jump, sprint: sprint && !w.trigger, crouch }, w.adsT, slot ? slot.stats.move : 1);
     p.applyCamera(camera);
@@ -1103,7 +1110,15 @@ function step(dt) {
     // interaction prompt
     currentInteract = computeInteract();
     hud.prompt(interactText(currentInteract));
-    touch.setUse(currentInteract ? 1 : 0);
+    if (game.inputMode === 'touch') {
+      const sl = w.active();
+      touch.setContext({
+        use: currentInteract ? shortUse(currentInteract) : '',
+        reload: !!sl && w.state === 'idle' && sl.mag < sl.stats.mag && sl.reserve > 0,
+        knife: zombieNear(2.4),
+      });
+      $('crosshair').classList.toggle('target', autoHit);
+    }
     if (holdingId && holdingId.startsWith('rev:')) {
       const r = game.remotes.get(+holdingId.slice(4));
       const need = me.perks.includes('revive') ? REVIVE_TIME_QR : REVIVE_TIME;
@@ -1116,7 +1131,7 @@ function step(dt) {
     // HUD
     hud.setAmmo(w.active(), me.grenades);
     const s = w.active();
-    if (s && s.mag === 0 && s.reserve > 0 && w.state !== 'reload') hud.reloadHint('Press R to reload');
+    if (s && s.mag === 0 && s.reserve > 0 && w.state !== 'reload') hud.reloadHint(game.inputMode === 'touch' ? 'Tap ⟳ to reload' : game.inputMode === 'pad' ? `Press ${gamepad.labels.use} to reload` : 'Press R to reload');
     else if (s && s.mag === 0 && s.reserve === 0) hud.reloadHint('NO AMMO');
     else if (w.state === 'reload') hud.reloadHint('');
     else hud.reloadHint('');
@@ -1174,6 +1189,56 @@ function rumble(strong, weak, ms) {
 }
 game.rumble = rumble;
 let aimCheckT = 0, aimHit = false;
+// ---- touch auto-fire target check: a few rays around the crosshair, walls block it
+let autoT = 0, autoHit = false, autoFiring = false;
+const _af = new THREE.Vector3();
+function autoTarget() {
+  const now = performance.now();
+  if (now - autoT < 60) return autoHit;
+  autoT = now;
+  autoHit = false;
+  const s = game.weapons && game.weapons.active();
+  if (!s || !game.zombies || game.weapons.state !== 'idle') return false;
+  const range = Math.min(40, (s.stats.range || 30) * 1.25);
+  const k = 0.022; // about 1.3 degrees of forgiveness around the crosshair
+  for (const [ox, oy] of [[0, 0], [k, 0], [-k, 0], [0, k], [0, -k]]) {
+    _af.set(ox, oy, -1).normalize().applyQuaternion(camera.quaternion);
+    let best = null;
+    for (const h of game.zombies.raycast(camera.position, _af, range)) if (h.e.state !== 3 && (!best || h.dist < best.dist)) best = h;
+    if (!best) continue;
+    const wall = raycastWorld(camera.position.x, camera.position.y, camera.position.z, _af.x, _af.y, _af.z, best.dist, game.world.openDoors);
+    if (wall.dist >= best.dist - 0.05) { autoHit = true; break; }
+  }
+  return autoHit;
+}
+let nearT = 0, nearHit = false;
+function zombieNear(r) {
+  const now = performance.now();
+  if (now - nearT < 100) return nearHit;
+  nearT = now;
+  nearHit = false;
+  const p = game.player.pos;
+  if (game.zombies) for (const e of game.zombies.map.values()) {
+    if (e.state === 3) continue;
+    const q = e.root.position;
+    if (Math.abs(q.x - p.x) < r && Math.abs(q.z - p.z) < r && Math.hypot(q.x - p.x, q.z - p.z) < r) { nearHit = true; break; }
+  }
+  return nearHit;
+}
+// one-word label for the touch USE button
+function shortUse(it) {
+  switch (it.kind) {
+    case 'door': return `OPEN ${it.door.cost}`;
+    case 'wall': return 'BUY';
+    case 'perk': return game.world.power || !PERKS[it.o.perk].power ? 'BUY' : 'NO POWER';
+    case 'power': return 'POWER';
+    case 'pap': return 'PACK';
+    case 'box': return game.box.state === 'offer' ? 'TAKE' : 'BOX';
+    case 'win': return 'REBUILD';
+    case 'revive': return 'REVIVE';
+    default: return 'USE';
+  }
+}
 function aimOnTarget() {
   const now = performance.now();
   if (now - aimCheckT < 50) return aimHit;
@@ -1269,6 +1334,7 @@ const actions = {
 };
 const gamepad = new GamepadControls(actions);
 const touch = new TouchControls(actions);
+touch.layout(settings.touchSize);
 if (touchDevice) actions.setMode('touch');
 window.__buildScene = buildScene;
 frame();

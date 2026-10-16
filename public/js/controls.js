@@ -93,18 +93,26 @@ export class GamepadControls {
 }
 
 // ---------------------------------------------------------------- touch
-const BUTTONS = [
-  // id, label, css class
-  ['fire', 'FIRE', 'big'],
-  ['ads', 'AIM', ''],
-  ['jump', 'JUMP', ''],
-  ['crouch', 'CROUCH', 'small'],
-  ['reload', 'RELOAD', 'small'],
-  ['nade', 'NADE', 'small'],
-  ['knife', 'KNIFE', 'small'],
-  ['swap', 'SWAP', 'small'],
-  ['use', 'USE', 'use'],
-];
+// Few permanent buttons in an arc around FIRE (bottom-right), everything else only appears when it
+// can be used (USE, RELOAD, KNIFE). Swapping weapons is the small button next to the ammo counter.
+const ICON = {
+  fire: '<circle cx="12" cy="12" r="6.5"/><path d="M12 1.5v5M12 17.5v5M1.5 12h5M17.5 12h5"/>',
+  ads: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3"/>',
+  jump: '<path d="M5.5 13.5L12 7l6.5 6.5M5.5 19L12 12.5l6.5 6.5"/>',
+  crouch: '<path d="M5.5 6.5L12 13l6.5-6.5"/><path d="M4.5 19h15"/>',
+  nade: '<circle cx="12" cy="14" r="6.5"/><path d="M9.5 7.5h5l-1-2.5h-3zM14.5 6.5l3.5-3"/>',
+  reload: '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 3.5v5h-5"/>',
+  knife: '<path d="M4 20l7.5-7.5"/><path d="M11.5 12.5L20 3l1 1-7.2 10.2z"/><path d="M8.5 13.5l2 2"/>',
+  swap: '<path d="M4 8.5h14.5l-3.5-3.5M20 15.5H5.5L9 19"/>',
+  pause: '<path d="M8.5 5.5v13M15.5 5.5v13"/>',
+};
+const svg = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
+// [angle in degrees around FIRE (0 = right, 90 = up), distance in rings, size px]
+const RING = {
+  fire: [0, 0, 84], jump: [96, 1, 56], nade: [131, 1, 50], crouch: [164, 1, 52], ads: [198, 1, 60],
+  knife: [118, 1.78, 54], reload: [161, 1.8, 54],
+};
+const CONTEXT = ['use', 'reload', 'knife'];
 
 export class TouchControls {
   constructor(actions) {
@@ -114,20 +122,28 @@ export class TouchControls {
     this.lookDY = 0;
     this.jump = false;
     this.crouch = false;
+    this.fireHeld = false;
+    this.scale = 1;
+    this.ctx = { use: false, reload: false, knife: false };
+    this.shownAt = {};
     this.pointers = new Map(); // pointerId -> role
     this.el = document.createElement('div');
     this.el.id = 'touchUI';
     this.el.className = 'hidden';
+    const btn = (id, extra = '') => `<button class="tbtn${CONTEXT.includes(id) ? ' ctx' : ''} ${extra}" data-b="${id}" aria-label="${id}">${svg(id)}<span>${id === 'ads' ? 'AIM' : id === 'nade' ? '' : id === 'fire' ? '' : ''}</span></button>`;
     this.el.innerHTML = `
       <div id="tLookZone"></div>
       <div id="tStick"><div id="tKnob"></div></div>
-      <div id="tButtons">${BUTTONS.map(([id, label, cls]) => `<button class="tbtn ${cls}" data-b="${id}">${label}</button>`).join('')}</div>
-      <button class="tbtn tiny" id="tPause" data-b="pause">II</button>
-      <button class="tbtn tiny" id="tScore" data-b="score">&#9776;</button>`;
+      ${Object.keys(RING).map((id) => btn(id, id === 'fire' ? 'big' : '')).join('')}
+      <button class="tbtn use ctx" data-b="use"><span id="tUseText">USE</span></button>
+      <button class="tbtn tiny" id="tSwap" data-b="swap" aria-label="swap weapon">${svg('swap')}</button>
+      <button class="tbtn tiny" id="tPause" data-b="pause" aria-label="pause">${svg('pause')}</button>`;
     document.body.appendChild(this.el);
     this.stick = this.el.querySelector('#tStick');
     this.knob = this.el.querySelector('#tKnob');
     this.useBtn = this.el.querySelector('[data-b=use]');
+    this.useText = this.el.querySelector('#tUseText');
+    this.layout();
     this.el.addEventListener('pointerdown', (e) => this.down(e));
     window.addEventListener('pointermove', (e) => this.moveEvt(e), { passive: false });
     window.addEventListener('pointerup', (e) => this.up(e));
@@ -135,10 +151,38 @@ export class TouchControls {
     this.el.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
-  show(on) { this.el.classList.toggle('hidden', !on); }
-  setUse(text) {
-    this.useBtn.classList.toggle('ready', !!text);
+  /** Place the button arc; scale comes from the "touch button size" setting. */
+  layout(scale = this.scale) {
+    this.scale = scale;
+    const cR = 72 * scale, cB = 80 * scale, r = 100 * scale;
+    for (const [id, [deg, ring, size]] of Object.entries(RING)) {
+      const b = this.el.querySelector(`[data-b=${id}]`);
+      const a = (deg * Math.PI) / 180, s = size * scale;
+      const right = cR - Math.cos(a) * r * ring - s / 2, bottom = cB + Math.sin(a) * r * ring - s / 2;
+      b.style.width = b.style.height = `${s}px`;
+      b.style.right = `calc(${right.toFixed(1)}px + var(--sr))`;
+      b.style.bottom = `calc(${bottom.toFixed(1)}px + var(--sb))`;
+    }
+    this.useBtn.style.right = `calc(${(215 * scale).toFixed(1)}px + var(--sr))`;
+    this.useBtn.style.bottom = `calc(${(235 * scale).toFixed(1)}px + var(--sb))`;
+    this.useBtn.style.transform = `scale(${scale})`;
   }
+
+  show(on) { this.el.classList.toggle('hidden', !on); }
+
+  /** Contextual buttons: { use: 'Buy Juggernog — 2500' | '', reload: bool, knife: bool } */
+  setContext(c) {
+    const now = performance.now();
+    for (const k of CONTEXT) {
+      const on = !!c[k];
+      if (on === this.ctx[k]) continue;
+      this.ctx[k] = on;
+      if (on) this.shownAt[k] = now;
+      this.el.querySelector(`[data-b=${k}]`).classList.toggle('show', on);
+    }
+    if (c.use && this.useText.textContent !== c.use) this.useText.textContent = c.use;
+  }
+  setUse(text) { this.setContext({ ...this.ctx, use: text || '' }); }
 
   down(e) {
     if (e.pointerType === 'mouse') return;
@@ -147,16 +191,22 @@ export class TouchControls {
     const b = e.target.closest('[data-b]');
     if (b) {
       const id = b.dataset.b;
+      // a button that just popped up under a moving thumb shouldn't fire by accident
+      if (CONTEXT.includes(id) && (!this.ctx[id] || performance.now() - (this.shownAt[id] || 0) < 220)) {
+        this.pointers.set(e.pointerId, { role: 'look', x: e.clientX, y: e.clientY });
+        return;
+      }
       b.classList.add('on');
       this.pointers.set(e.pointerId, { role: 'btn', id, el: b, x: e.clientX, y: e.clientY });
       this.press(id, true);
       return;
     }
-    if (e.clientX < window.innerWidth * 0.4) {
+    if (e.clientX < window.innerWidth * 0.42) {
       // floating joystick wherever the left thumb lands
       this.pointers.set(e.pointerId, { role: 'stick', cx: e.clientX, cy: e.clientY });
-      this.stick.style.left = `${e.clientX - 60}px`;
-      this.stick.style.top = `${e.clientY - 60}px`;
+      const half = 60 * this.scale;
+      this.stick.style.left = `${e.clientX - half}px`;
+      this.stick.style.top = `${e.clientY - half}px`;
       this.stick.classList.add('on');
       this.knob.style.transform = 'translate(0px, 0px)';
     } else {
@@ -170,7 +220,7 @@ export class TouchControls {
     e.preventDefault();
     if (p.role === 'stick') {
       let dx = e.clientX - p.cx, dy = e.clientY - p.cy;
-      const m = Math.hypot(dx, dy), max = 55;
+      const m = Math.hypot(dx, dy), max = 55 * this.scale;
       if (m > max) { dx *= max / m; dy *= max / m; }
       this.knob.style.transform = `translate(${dx}px, ${dy}px)`;
       this.move = [dx / max, -dy / max];
@@ -198,7 +248,7 @@ export class TouchControls {
   press(id, on) {
     const a = this.a;
     switch (id) {
-      case 'fire': a.trigger(on); break;
+      case 'fire': this.fireHeld = on; a.trigger(on); break;
       case 'ads': if (on) a.adsToggle(); break;
       case 'jump': this.jump = on; break;
       case 'crouch': if (on) this.crouch = !this.crouch; break;
@@ -208,7 +258,6 @@ export class TouchControls {
       case 'swap': if (on) a.swap(); break;
       case 'use': a.useOrReload(on, true); break;
       case 'pause': if (on) a.pause(); break;
-      case 'score': a.scoreboard(on); break;
     }
   }
 
@@ -217,13 +266,14 @@ export class TouchControls {
     const look = [this.lookDX, this.lookDY];
     this.lookDX = 0; this.lookDY = 0;
     const m = Math.hypot(this.move[0], this.move[1]);
-    return { move: this.move, lookPx: look, jump: this.jump, crouch: this.crouch, sprint: m > 0.92 && this.move[1] > 0.5 };
+    return { move: this.move, lookPx: look, jump: this.jump, crouch: this.crouch, sprint: m > 0.92 && this.move[1] > 0.5, fireHeld: this.fireHeld };
   }
 
   reset() {
     this.pointers.clear();
     this.move = [0, 0];
     this.jump = false;
+    this.fireHeld = false;
     this.el.querySelectorAll('.on').forEach((b) => b.classList.remove('on'));
     this.stick.classList.remove('on');
   }

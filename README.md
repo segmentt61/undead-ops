@@ -99,8 +99,11 @@ Stick sensitivity, aim assist and vibration are in **Settings → Controls**.
 ### Phones and tablets (Android, iPhone, iPad)
 
 Open the game URL in Chrome. On-screen controls appear automatically: a floating joystick on
-the left half, drag anywhere on the right to look, and buttons for fire, aim, jump, crouch,
-reload, grenade, knife, swap and use. Hold FIRE or AIM and slide to steer while shooting.
+the left half and drag anywhere on the right to look. **Auto-fire** shoots by itself while the
+crosshair (it turns red) is on a zombie in range — you only aim. Only five buttons stay on screen
+(fire, aim, jump, crouch, grenade, in an arc around FIRE); **USE**, **RELOAD** and **KNIFE** pop up only
+when you can use them, and the small button next to the ammo counter swaps weapons. Auto-fire and
+button size are in Settings → Controls.
 
 To install it like an app: Chrome menu ⋮ → **Install app** (or **Add to Home screen**). It
 then starts fullscreen in landscape with its own icon. Graphics start on **Low** on touch
