@@ -1,0 +1,18 @@
+{
+  "name": "undead-ops",
+  "version": "1.0.0",
+  "description": "Online co-op browser zombie FPS (BO1-zombies style, Venge.io-inspired look)",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "three": "^0.169.0",
+    "ws": "^8.18.0"
+  }
+}

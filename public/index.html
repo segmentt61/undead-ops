@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Undead Ops</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Permanent+Marker&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <script type="importmap">{ "imports": { "three": "/lib/three.module.js", "three/addons/": "/jsm/" } }</script>
+</head>
+<body>
+  <div id="game"></div>
+
+  <!-- ===================== MAIN MENU ===================== -->
+  <div id="menu" class="screen">
+    <div class="menu-bg"></div>
+    <div class="menu-layout">
+      <div class="menu-panel side">
+        <h1 class="logo">UNDEAD<span>OPS</span></h1>
+        <div class="tagline">ONLINE CO-OP ZOMBIES</div>
+        <label>Your name<input id="nameInput" maxlength="16" placeholder="Survivor" /></label>
+        <button id="quickBtn" class="btn big">QUICK PLAY</button>
+        <div class="btn-row">
+          <button id="createBtn" class="btn">CREATE SERVER</button>
+          <button id="settingsBtn" class="btn ghost">SETTINGS</button>
+        </div>
+        <div class="join-code">
+          <input id="roomInput" maxlength="24" placeholder="Join by code…" />
+          <button id="playBtn" class="btn small">JOIN</button>
+        </div>
+        <details class="controls">
+          <summary>Controls</summary>
+          <div class="grid">
+            <b>WASD</b><span>Move</span><b>Mouse</b><span>Aim / Fire / ADS (right)</span>
+            <b>Shift</b><span>Sprint</span><b>Space</b><span>Jump</span>
+            <b>C / Ctrl</b><span>Crouch</span><b>R</b><span>Reload</span>
+            <b>F (hold)</b><span>Buy / Open / Rebuild / Revive</span><b>V</b><span>Knife</span>
+            <b>G</b><span>Grenade</span><b>1 / 2 / Wheel</b><span>Switch weapon</span>
+            <b>Tab</b><span>Scoreboard</span><b>T / Enter</b><span>Chat</span>
+          </div>
+        </details>
+        <div id="menuError" class="error"></div>
+      </div>
+      <div class="menu-panel browser">
+        <div class="browser-head">
+          <h2>SERVER LIST</h2>
+          <button id="refreshBtn" class="btn small ghost">&#8635; Refresh</button>
+        </div>
+        <div class="server-table">
+          <table>
+            <thead><tr><th>Server</th><th>Map</th><th>Players</th><th>Status</th><th></th></tr></thead>
+            <tbody id="serverList"></tbody>
+          </table>
+          <div id="serverEmpty" class="muted empty">No public servers right now. Create one and your friends will see it here!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== CREATE SERVER ===================== -->
+  <div id="createScreen" class="screen hidden">
+    <div class="menu-bg"></div>
+    <div class="menu-panel wide">
+      <h2>CREATE SERVER</h2>
+      <label>Server name<input id="srvName" maxlength="28" placeholder="My zombie server" /></label>
+      <div class="muted">Map</div>
+      <div id="createMaps" class="map-grid"></div>
+      <div class="form-row">
+        <label>Max players<select id="srvMax"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></label>
+        <label class="check"><input id="srvPrivate" type="checkbox" /> Private (hidden from the list, join by code or link)</label>
+      </div>
+      <button id="createGo" class="btn big">CREATE &amp; JOIN</button>
+      <button id="createBack" class="btn small ghost">Back</button>
+    </div>
+  </div>
+
+  <!-- ===================== SETTINGS ===================== -->
+  <div id="settingsScreen" class="screen hidden">
+    <div class="menu-bg"></div>
+    <div class="menu-panel wide settings">
+      <h2>SETTINGS</h2>
+      <div class="settings-grid">
+        <section>
+          <h3>Controls</h3>
+          <label>Mouse sensitivity <span data-val="sens"></span><input data-key="sens" type="range" min="0.2" max="4" step="0.05" /></label>
+          <label>Aim-down-sights sensitivity <span data-val="adsSens"></span><input data-key="adsSens" type="range" min="0.3" max="1.5" step="0.05" /></label>
+          <label>Field of view <span data-val="fov"></span><input data-key="fov" type="range" min="65" max="110" step="1" /></label>
+          <label class="check"><input data-key="invertY" type="checkbox" /> Invert mouse Y</label>
+          <label class="check"><input data-key="toggleAds" type="checkbox" /> Toggle aim (instead of hold)</label>
+        </section>
+        <section>
+          <h3>Audio</h3>
+          <label>Effects volume <span data-val="vol"></span><input data-key="vol" type="range" min="0" max="1" step="0.05" /></label>
+          <label>Music volume <span data-val="music"></span><input data-key="music" type="range" min="0" max="1" step="0.05" /></label>
+          <label class="check"><input data-key="rockMusic" type="checkbox" /> Rock music during rounds</label>
+        </section>
+        <section>
+          <h3>Graphics</h3>
+          <label>Quality <span id="gfxNote" class="muted"></span><select data-key="gfx"><option value="high">High: shadows, ambient occlusion, bloom</option><option value="medium">Medium: bloom</option><option value="low">Low: fastest</option></select></label>
+          <label class="check"><input data-key="dynres" type="checkbox" /> Dynamic resolution (keeps FPS smooth)</label>
+          <label class="check"><input data-key="showFps" type="checkbox" /> Show FPS and ping</label>
+        </section>
+        <section>
+          <h3>Gameplay</h3>
+          <label>Gore <select data-key="gore"><option value="extreme">Extreme: dismemberment, blood everywhere</option><option value="normal">Normal</option><option value="off">Off</option></select></label>
+          <label>Crosshair color <select data-key="crosshair"><option value="#ffffff">White</option><option value="#4cff6a">Green</option><option value="#ff4040">Red</option><option value="#3ff5e1">Cyan</option><option value="#ffd23f">Yellow</option></select></label>
+        </section>
+      </div>
+      <button id="settingsBack" class="btn big">DONE</button>
+    </div>
+  </div>
+
+  <!-- ===================== LOBBY ===================== -->
+  <div id="lobby" class="screen hidden">
+    <div class="menu-bg"></div>
+    <div class="menu-panel wide">
+      <h2 id="lobbyTitle"></h2>
+      <div class="muted">Code: <b id="lobbyRoom"></b></div>
+      <button id="copyLinkBtn" class="btn small">Copy invite link</button>
+      <div class="muted">Map (host picks)</div>
+      <div id="lobbyMaps" class="map-grid"></div>
+      <ul id="lobbyPlayers"></ul>
+      <button id="startBtn" class="btn big">START GAME</button>
+      <div id="lobbyWait" class="muted">Waiting for the host to start…</div>
+      <button id="leaveBtn" class="btn small ghost">Leave</button>
+    </div>
+  </div>
+
+  <!-- ===================== HUD ===================== -->
+  <div id="hud" class="hidden">
+    <div id="vignette"></div>
+    <div id="hurtFlash"></div>
+    <div id="dmgDir"></div>
+    <div id="nukeFlash"></div>
+    <div id="crosshair"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i></div>
+    <div id="hitmarker"></div>
+    <div id="prompt"></div>
+    <div id="notice"></div>
+    <div id="subnotice"></div>
+    <div id="roundBox"><div id="roundNum"></div></div>
+    <div id="perkIcons"></div>
+    <div id="activePowerups"></div>
+    <div id="scoreList"></div>
+    <div id="ammoBox">
+      <div id="weaponName"></div>
+      <div id="ammoText"><span id="ammoMag">0</span><span id="ammoRes">/ 0</span></div>
+      <div id="grenades"></div>
+    </div>
+    <div id="reloadHint"></div>
+    <div id="netInfo"></div>
+    <div id="downedBox" class="hidden">
+      <div id="downedTitle">YOU ARE DOWN</div>
+      <div class="bar"><div id="bleedBar"></div></div>
+      <div id="downedSub">Hold on! A teammate can revive you.</div>
+    </div>
+    <div id="progressBox" class="hidden"><div id="progressLabel"></div><div class="bar"><div id="progressBar"></div></div></div>
+    <div id="deadBox" class="hidden">YOU BLED OUT<br /><small>You will respawn at the start of the next round</small></div>
+    <div id="chatLog"></div>
+    <input id="chatInput" maxlength="140" autocomplete="off" class="hidden" placeholder="Say something… (Enter to send)" />
+    <div id="scoreboard" class="hidden">
+      <div class="sb-title">ROUND <span id="sbRound"></span></div>
+      <table><thead><tr><th>Player</th><th>Points</th><th>Kills</th><th>Headshots</th><th>Downs</th><th>Revives</th><th>Ping</th></tr></thead><tbody id="sbBody"></tbody></table>
+    </div>
+  </div>
+
+  <div id="clickToPlay" class="screen hidden">
+    <div class="ctp">CLICK TO PLAY</div>
+  </div>
+
+  <div id="pauseMenu" class="screen hidden">
+    <div class="menu-panel">
+      <h2>PAUSED</h2>
+      <div class="muted">The game keeps running for your team!</div>
+      <button id="resumeBtn" class="btn big">RESUME</button>
+      <button id="pauseSettingsBtn" class="btn">SETTINGS</button>
+      <button id="copyLinkBtn2" class="btn small">Copy invite link</button>
+      <button id="quitBtn" class="btn small ghost">Quit to menu</button>
+    </div>
+  </div>
+
+  <div id="gameOver" class="screen hidden">
+    <div class="menu-panel wide">
+      <h1 class="go-title">GAME OVER</h1>
+      <div id="goRounds"></div>
+      <table><thead><tr><th>Player</th><th>Points</th><th>Kills</th><th>Headshots</th><th>Downs</th><th>Revives</th></tr></thead><tbody id="goBody"></tbody></table>
+      <div id="goMaps" class="map-grid"></div>
+      <button id="restartBtn" class="btn big">PLAY AGAIN</button>
+      <div id="goWait" class="muted">Waiting for the host to restart…</div>
+      <button id="goMenuBtn" class="btn small ghost">Main menu</button>
+    </div>
+  </div>
+
+  <div id="loading" class="screen hidden"><div class="ctp">CONNECTING…</div></div>
+
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>

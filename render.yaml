@@ -1,0 +1,12 @@
+# Render blueprint: one free web service running the game server (HTTP + WebSocket on one port).
+services:
+  - type: web
+    name: undead-ops
+    runtime: node
+    plan: free
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: 22
