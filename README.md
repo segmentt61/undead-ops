@@ -47,6 +47,9 @@ It prints an `https://….trycloudflare.com` link — send that to your friends.
 (Your computer has to stay on while you play.)
 
 **Always-on hosting (free tiers available): Render.com**
+
+Live server: https://undead-ops-eu.onrender.com (Frankfurt)
+
 1. Push this folder to a GitHub repository.
 2. On Render: *New → Web Service* → pick the repo.
 3. Build command `npm install`, start command `npm start`. Render sets `PORT` automatically.

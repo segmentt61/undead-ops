@@ -1,8 +1,9 @@
-# Render blueprint: one free web service running the game server (HTTP + WebSocket on one port).
+# Render blueprint: one free web service in Frankfurt running the game server (HTTP + WebSocket on one port).
 services:
   - type: web
-    name: undead-ops
+    name: undead-ops-eu
     runtime: node
+    region: frankfurt
     plan: free
     buildCommand: npm install --omit=dev
     startCommand: npm start
