@@ -3,6 +3,92 @@
 import * as THREE from 'three';
 import { build } from './characters.js';
 import { pbrSurface, worldUV } from './pbr.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+
+// ------------------------------------------------------------------ photo-scanned models (CC0, Poly Haven)
+const REAL_FILES = ['cement_bag', 'ammo_box', 'painted_wooden_bench', 'street_lamp_01', 'metal_office_desk', 'SchoolChair_01', 'utility_box_01',
+  'WoodenTable_01', 'mounted_fluorescent_lights', 'cardboard_box_01', 'drawer_cabinet', 'propane_tank', 'old_tyre', 'wooden_crate_01', 'trashbag',
+  'Barrel_01', 'electric_stove', 'metal_tool_chest', 'old_bed_frame', 'wooden_military_crate', 'covered_car', 'old_drill_press', 'tool_cart',
+  'classic_laptop', 'hanging_industrial_lamp', 'caged_hanging_light', 'wheelchair_01', 'filmstrip_projector_8mm', 'metal_trash_can',
+  'portable_generator', 'potted_plant_02', 'steel_frame_shelves_01'];
+const REAL = {};   // name -> { scene, parts: [{ geometry, material, matrix }] }
+let realLoading = null;
+export const realLoaded = () => Object.keys(REAL).length > 0;
+
+export function loadRealProps() {
+  if (realLoading) return realLoading;
+  const L = new GLTFLoader();
+  L.setMeshoptDecoder(MeshoptDecoder);
+  realLoading = Promise.all(REAL_FILES.map((n) => L.loadAsync(`/assets/props/${n}.glb`).then((g) => {
+    g.scene.updateMatrixWorld(true);
+    const parts = [];
+    g.scene.traverse((o) => {
+      if (!o.isMesh) return;
+      if (o.material.map) o.material.map.anisotropy = 4;
+      parts.push({ geometry: o.geometry, material: o.material, matrix: o.matrixWorld.clone() });
+    });
+    REAL[n] = { scene: g.scene, parts };
+  }).catch((e) => console.warn('prop failed', n, e)))).then(() => {});
+  return realLoading;
+}
+
+/** A standalone copy of a photo-scanned model (shares geometry and materials). */
+export function realModel(name) {
+  return REAL[name] ? REAL[name].scene.clone(true) : null;
+}
+
+// Which scanned models make up each prop kind. Footprint frame: x along the width w, z along the
+// depth d, centred; entries are [model, x, y, z, rotY, scale (number or [sx, sy, sz])].
+const REAL_KINDS = {
+  crate: () => [['wooden_military_crate', 0, 0, 0, 0.1, 0.78], ['wooden_military_crate', 0.03, 0.36, 0.02, -0.08, 0.76], ['cardboard_box_01', -0.1, 0.71, 0, 0.5, 0.9]],
+  crates: () => [['wooden_military_crate', -0.05, 0, 0, 0.3, 0.75], ['cardboard_box_01', 0.05, 0.36, 0, 0.6, 1]],
+  barrel: () => [['Barrel_01', 0, 0, 0, 0, 1.05]],
+  boxes: () => [['cardboard_box_01', -0.18, 0, -0.1, 0.2, 1.1], ['cardboard_box_01', 0.22, 0, 0.16, -0.5, 1], ['cardboard_box_01', -0.1, 0.37, -0.05, 0.9, 1]],
+  pallet: () => [['wooden_crate_01', 0, 0, -0.2, 0, 1.1], ['wooden_crate_01', 0, 0, 0.22, 0, 1.1], ['cardboard_box_01', -0.1, 0.38, 0, 0.4, 1.1]],
+  ammo: () => [['wooden_military_crate', 0, 0, -0.05, 0, 0.75], ['ammo_box', -0.15, 0.35, 0, 0.3, 1.6], ['ammo_box', 0.12, 0.35, 0.02, -0.2, 1.6]],
+  trash: () => [['trashbag', -0.15, 0, -0.1, 0.3, 1], ['trashbag', 0.2, 0, 0.15, 2, 0.85]],
+  rubble: () => [['cement_bag', -0.12, 0, 0, 0.4, 1.1], ['cement_bag', 0.15, 0.17, 0.05, -0.3, 1.1], ['old_tyre', 0.1, 0.09, -0.2, 0, [1, 1, 1]]],
+  table: (w, d) => [['WoodenTable_01', 0, 0, 0, w >= d ? 0 : Math.PI / 2, [Math.max(w, d) * 0.95 / 1.79, 1.38, Math.min(w, d) * 0.9 / 0.66]]],
+  desk: (w, d) => [['metal_office_desk', 0, 0, 0, w >= d ? 0 : Math.PI / 2, [Math.max(w, d) * 0.92 / 2, 1, 0.85]], ['classic_laptop', 0.25, 0.79, 0, Math.PI, 0.9], ['SchoolChair_01', 0.2, 0, 0.55, Math.PI, 0.95]],
+  labtable: (w, d) => [['metal_office_desk', 0, 0, 0, w >= d ? 0 : Math.PI / 2, [Math.max(w, d) * 0.92 / 2, 1.08, 0.85]], ['filmstrip_projector_8mm', -0.4, 0.85, 0, 0.6, 0.9], ['propane_tank', 0.5, 0.85, 0, 0, 0.6]],
+  bed: (w, d) => [['old_bed_frame', 0, 0, 0, w >= d ? Math.PI / 2 : 0, 0.92]],
+  gurney: (w, d) => [['old_bed_frame', 0, 0, 0, w >= d ? Math.PI / 2 : 0, [0.75, 0.8, 0.92]]],
+  bench: (w, d) => [['painted_wooden_bench', 0, 0, 0, w >= d ? 0 : Math.PI / 2, [Math.max(w, d) * 0.9 / 1.16, 1, 1]]],
+  generator: (w, d) => [['portable_generator', -0.2, 0, 0, w >= d ? 0 : Math.PI / 2, 1.6], ['propane_tank', 0.7, 0, 0.1, 0, 1.2]],
+  workbench: (w, d) => [['tool_cart', 0, 0, 0, w >= d ? 0 : Math.PI / 2, [Math.max(w, d) * 0.9 / 1.27, 1, 1]], ['metal_tool_chest', 0.3, 0.96, 0, 0, 0.8]],
+  filing: () => [['drawer_cabinet', 0, 0, -0.18, 0, 0.82]],
+  car: (w, d) => [['covered_car', 0, 0, 0, w >= d ? Math.PI / 2 : 0, 0.9]],
+  car2: (w, d) => [['covered_car', 0, 0, 0, w >= d ? -Math.PI / 2 : Math.PI, 0.9]],
+  car3: (w, d) => [['covered_car', 0, 0, 0, w >= d ? Math.PI / 2 : 0, [0.88, 0.85, 0.9]]],
+  planter: () => [['potted_plant_02', 0, 0, 0, 0, 1.25]],
+  wheelchair: () => [['wheelchair_01', 0, 0, 0, 0.6, 0.95]],
+  stove: () => [['electric_stove', 0, 0, 0, 0, [1.6, 1.08, 1.25]]],
+  // workshop machinery in place of the old blocky 2x2 machine
+  machine: (w, d) => [['portable_generator', -0.35, 0, -0.2, 0.2, 1.9], ['old_drill_press', 0.5, 0, 0.35, -0.6, 1.7], ['metal_tool_chest', 0.45, 0, -0.55, 0, 1.1], ['propane_tank', -0.6, 0, 0.6, 0, 1.4]],
+  shelf: (w, d) => {
+    // scanned steel racks (back to back) along the long side, stocked with cardboard boxes
+    const along = d >= w, L = along ? d : w;
+    const n = Math.max(1, Math.round(L / 1.1)), step = L / n, out = [];
+    let k = 1;
+    for (let i = 0; i < n; i++) {
+      const c = -L / 2 + step * (i + 0.5);
+      for (const side of [-1, 1]) {
+        const x = along ? side * 0.25 : c, z = along ? c : side * 0.25, ry = along ? Math.PI / 2 + (side < 0 ? Math.PI : 0) : (side < 0 ? Math.PI : 0);
+        out.push(['steel_frame_shelves_01', x, 0, z, ry, 0.1]);
+        for (const lvl of [0.02, 0.52, 1.02, 1.52]) {
+          k = (k * 7 + 3) % 11;
+          if (k < 3) continue;
+          const off = ((k % 5) - 2) * 0.12;
+          out.push(['cardboard_box_01', x + (along ? 0 : off), lvl + 0.03, z + (along ? off : 0), k * 0.4, 0.9]);
+        }
+      }
+    }
+    return out;
+  },
+  projector: () => [['tool_cart', 0, 0, 0, 0, 0.7], ['filmstrip_projector_8mm', 0, 0.67, 0, 0, 1.1]],
+};
+
 
 const propMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, metalness: 0.15 });
 const glowMats = {
@@ -352,15 +438,46 @@ function grimeProps() {
 
 export function buildProps(scene, props) {
   grimeProps();
+  const meshes = [];
+  const m = new THREE.Matrix4(), t = new THREE.Matrix4(), q = new THREE.Quaternion(), sv = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+  // photo-scanned props first; whatever has no scanned model keeps its built-in model
+  const realGroups = new Map();
+  for (const p of props) {
+    if (!realLoaded() || !REAL_KINDS[p.kind]) continue;
+    const key = `${p.kind}|${p.w}|${p.h}`;
+    if (!realGroups.has(key)) realGroups.set(key, []);
+    realGroups.get(key).push(p);
+  }
+  for (const [key, list] of realGroups) {
+    const [kind, w, h] = key.split('|');
+    for (const [name, x, y, z, ry, sc] of REAL_KINDS[kind](+w, +h)) {
+      const model = REAL[name];
+      if (!model) continue;
+      const scl = Array.isArray(sc) ? sc : [sc, sc, sc];
+      const local = new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), q.setFromAxisAngle(up, ry), sv.set(...scl));
+      for (const part of model.parts) {
+        const im = new THREE.InstancedMesh(part.geometry, part.material, list.length);
+        list.forEach((p, i) => {
+          m.makeRotationY(p.rot || 0);
+          m.setPosition(p.x + p.w / 2, 0, p.y + p.h / 2);
+          t.multiplyMatrices(m, local).multiply(part.matrix);
+          im.setMatrixAt(i, t);
+        });
+        im.castShadow = !list[0].decor;
+        im.receiveShadow = true;
+        scene.add(im);
+        meshes.push(im);
+      }
+    }
+  }
   const groups = new Map();
   for (const p of props) {
+    if (realLoaded() && REAL_KINDS[p.kind]) continue;
     if (p.kind === 'crate') continue; // crates use the textured crate mesh in world.js
     const key = `${p.kind}|${p.w}|${p.h}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(p);
   }
-  const meshes = [];
-  const m = new THREE.Matrix4();
   for (const [key, list] of groups) {
     const [kind, w, h] = key.split('|');
     const make = KINDS[kind];

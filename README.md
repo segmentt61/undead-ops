@@ -187,6 +187,11 @@ Safari starts on Medium. Resolution scales down automatically when the frame rat
 - Wall, floor and ceiling materials: [ambientCG](https://ambientcg.com) — Bricks097, Bricks094, Concrete012,
   PaintedPlaster017, Tiles141, Tiles105, Tiles074, Tiles139, WoodFloor043, Planks039, CorrugatedSteel005,
   OfficeCeiling001, Asphalt031, Ground110
+- Props, lamps, cars and the starting pistol: photo-scanned CC0 models from [Poly Haven](https://polyhaven.com/models) —
+  wooden/military crates, barrels, cardboard boxes, ammo boxes, steel shelves, tables, office desk, bed frames, bench,
+  generator, propane tank, tool cart and chest, drawer cabinet, trash bags and can, covered car, potted plant, wheelchair,
+  stove, drill press, projector, cement bags, tyre, school chair, utility box, laptop, industrial / caged / fluorescent /
+  street lamps, service pistol. Optimised with [glTF-Transform](https://gltf-transform.dev) (meshopt + WebP).
 - Reflections HDRI: [Abandoned Factory Canteen 01 by Poly Haven](https://polyhaven.com/a/abandoned_factory_canteen_01)
 
 ## Older looks

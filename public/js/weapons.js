@@ -597,6 +597,8 @@ export class Weapons {
     h.position.y += -Math.abs(Math.sin(p.bobT)) * 0.014 * bob + this.swayY * 0.3 * swayK - this.sprintT * 0.04 - p.landKick * 0.4;
     h.position.z += this.kick * 0.05;
     h.rotation.set(this.kick * 0.09 + this.swayY * swayK - this.sprintT * 0.35, this.swayX * swayK + this.sprintT * 0.6, this.sprintT * 0.15 + (p.downed ? 0.15 : 0));
+    // handguns sit canted in at the hip so you see the slide, not just its back
+    if (PISTOLS.includes(this.active()?.id)) { h.rotation.y += 0.12 * (1 - e); h.position.z += 0.06 * (1 - e); }
 
     let lower = 0;
     const k = this.stateDur ? 1 - Math.max(0, this.stateT) / this.stateDur : 1;

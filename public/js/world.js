@@ -6,7 +6,7 @@ import { WEAPONS } from '/shared/weapons.js';
 import * as TX from './textures.js';
 import * as MD from './models.js';
 import * as SF from './surfaces.js';
-import { buildProps } from './props.js';
+import { buildProps, realLoaded, realModel } from './props.js';
 import { buildDecals } from './decals.js';
 import { PBR, pbrSurface, worldUV } from './pbr.js';
 import { goreCfg } from './entities.js';
@@ -393,6 +393,7 @@ export class World {
   }
 
   buildCrates() {
+    if (realLoaded()) return; // scanned crates come with the props
     const list = [];
     for (const p of MAP.props) if (p.kind === 'crate') list.push([p.x, p.y]);
     const im = new THREE.InstancedMesh(MD.boxGeo(0.98, 0.98, 0.98), SF.surfaceMaterial(surfaces().crate, [1, 1]), list.length);
@@ -433,11 +434,29 @@ export class World {
       const lamp = r.outdoor ? 'pole' : st.lamp;
       const emissive = new THREE.Color(r.light).lerp(new THREE.Color('#fff'), 0.5);
       // decorative fluorescent tubes across the ceiling (emissive only, no real light)
+      const real = realLoaded();
+      const placeReal = (name, x, y, z, ry = 0) => {
+        const mdl = realModel(name);
+        if (!mdl) return null;
+        mdl.position.set(x, y, z);
+        mdl.rotation.y = ry;
+        this.scene.add(mdl);
+        return mdl;
+      };
       if (lamp === 'fluoro') {
         const tubeMat = new THREE.MeshStandardMaterial({ color: '#000', emissive, emissiveIntensity: 1.4 });
         for (let ty = r.y0 + 2; ty <= r.y1 - 1; ty += 4)
           for (let tx = r.x0 + 2; tx <= r.x1 - 1; tx += 4) {
-            const tube = new THREE.Mesh(tubeGeo, Math.random() < 0.15 ? tubeHousing : tubeMat);
+            const dead = Math.random() < 0.15;
+            if (real) {
+              placeReal('mounted_fluorescent_lights', tx, WALL_HEIGHT, ty);
+              const glow = new THREE.Mesh(tubeGeo, dead ? tubeHousing : tubeMat);
+              glow.scale.set(0.62, 0.4, 0.5);
+              glow.position.set(tx, WALL_HEIGHT - 0.035, ty);
+              this.scene.add(glow);
+              continue;
+            }
+            const tube = new THREE.Mesh(tubeGeo, dead ? tubeHousing : tubeMat);
             tube.position.set(tx, WALL_HEIGHT - 0.04, ty);
             this.scene.add(tube);
           }
@@ -459,7 +478,37 @@ export class World {
         let bulbMesh = new THREE.Mesh(bulbGeo, bulbMat);
         bulbMesh.position.copy(pos).y -= 0.12;
         let coneOpacity = 0.04;
-        if (lamp === 'hanging') {
+        if (real && (lamp === 'hanging' || lamp === 'industrial')) {
+          // scanned industrial pendant hanging from the ceiling, bulb inside its shade
+          placeReal('hanging_industrial_lamp', pos.x, ceilY, pos.z);
+          pos.y = ceilY - 1.24;
+          light.position.copy(pos).y -= 0.1;
+          bulbMesh.position.copy(pos);
+          bulbMesh.scale.setScalar(0.8);
+          coneOpacity = 0.05;
+        } else if (real && lamp === 'cage') {
+          placeReal('caged_hanging_light', pos.x, ceilY, pos.z, Math.random() * Math.PI);
+          pos.y = ceilY - 0.62;
+          light.position.copy(pos).y -= 0.1;
+          bulbMesh.position.copy(pos);
+          bulbMesh.scale.setScalar(0.8);
+          coneOpacity = 0;
+        } else if (real && lamp === 'fluoro') {
+          placeReal('mounted_fluorescent_lights', pos.x, ceilY, pos.z);
+          bulbMesh = new THREE.Mesh(tubeGeo, bulbMat);
+          bulbMesh.scale.set(0.62, 0.4, 0.5);
+          pos.y = ceilY - 0.035;
+          bulbMesh.position.copy(pos);
+          light.position.copy(pos).y -= 0.25;
+          coneOpacity = 0;
+        } else if (real && lamp === 'pole') {
+          placeReal('street_lamp_01', pos.x, 0, pos.z);
+          bulbMesh = new THREE.Mesh(MD.boxGeo(0.3, 0.04, 0.2), bulbMat);
+          pos.y = 3.72;
+          bulbMesh.position.copy(pos);
+          light.position.set(pos.x, 3.55, pos.z);
+          coneOpacity = 0.03;
+        } else if (lamp === 'hanging') {
           const shade = new THREE.Mesh(shadeGeo, shadeMat);
           shade.position.copy(pos).y += 0.05;
           const cord = new THREE.Mesh(MD.boxGeo(0.02, 0.6, 0.02), MD.mat('#111'));

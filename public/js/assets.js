@@ -2,6 +2,8 @@
 import * as THREE from 'three';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { objectUV, wearDetail, pbrSurface } from './pbr.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 // Physically based materials for the gun pack's material names.
 const PALETTE = {
@@ -33,7 +35,7 @@ function material(name) {
 
 // Which model each weapon uses, its real-world length (m) and where the grip sits (fraction from the rear).
 export const GUN_DEFS = {
-  m1911:    { file: 'Pistol_1', len: 0.22, grip: 0.3 },
+  m1911:    { file: 'Pistol_1', glb: 'service_pistol', crop: 'p38', len: 0.215, grip: 0.3 },
   python:   { file: 'Revolver_2', len: 0.29, grip: 0.18 },
   olympia:  { file: 'Shotgun_SawedOff', len: 0.66, grip: 0.24 },
   stakeout: { file: 'Shotgun_2', len: 1.0, grip: 0.3 },
@@ -117,9 +119,52 @@ function texturise(obj, s) {
   });
 }
 
+// The scanned pistol file is a display set (two pistols, magazines, a round): keep only the
+// wood-grip pistol by cutting triangles by position, then drop the loose cartridge.
+function cropP38(obj) {
+  obj.updateMatrixWorld(true);
+  obj.traverse((o) => {
+    if (!o.isMesh || !o.geometry.index) return;
+    const geo = o.geometry, pos = geo.attributes.position, idx = geo.index, mw = o.matrixWorld;
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+    const keep = [];
+    for (let i = 0; i < idx.count; i += 3) {
+      a.fromBufferAttribute(pos, idx.getX(i)).applyMatrix4(mw);
+      b.fromBufferAttribute(pos, idx.getX(i + 1)).applyMatrix4(mw);
+      c.fromBufferAttribute(pos, idx.getX(i + 2)).applyMatrix4(mw);
+      const cx = (a.x + b.x + c.x) / 3, cy = (a.y + b.y + c.y) / 3;
+      const cartridge = cx > 0.038 && cx < 0.085 && cy < -0.012;
+      if (cy < 0.095 && cx > -0.065 && !cartridge) keep.push(idx.getX(i), idx.getX(i + 1), idx.getX(i + 2));
+    }
+    // connected pieces; the cartridge is a small piece sitting lowest of all
+    const parent = new Int32Array(pos.count).map((_, i) => i);
+    const find = (x) => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+    for (let i = 0; i < keep.length; i += 3) { const r0 = find(keep[i]); parent[find(keep[i + 1])] = r0; parent[find(keep[i + 2])] = r0; }
+    const boxes = new Map();
+    for (const vi of keep) {
+      const r = find(vi);
+      a.fromBufferAttribute(pos, vi).applyMatrix4(mw);
+      if (!boxes.has(r)) boxes.set(r, new THREE.Box3());
+      boxes.get(r).expandByPoint(a);
+    }
+    const drop = new Set();
+    for (const [r, bx] of boxes) { const sz = bx.getSize(b); if (Math.max(sz.x, sz.y, sz.z) < 0.04 && bx.min.y < -0.045) drop.add(r); }
+    const out = [];
+    for (let i = 0; i < keep.length; i += 3) if (!drop.has(find(keep[i]))) out.push(keep[i], keep[i + 1], keep[i + 2]);
+    const cut = geo.clone();
+    cut.setIndex(out);
+    // only the kept triangles' vertices, so bounds (used to place the gun in the hands) are right
+    const ng = cut.toNonIndexed();
+    ng.computeBoundingBox(); ng.computeBoundingSphere();
+    o.geometry = ng;
+  });
+}
+
 function prepare(obj, def) {
+  if (def.crop === 'p38') cropP38(obj);
   obj.traverse((o) => {
     if (!o.isMesh) return;
+    if (def.glb) { o.castShadow = true; return; } // scanned models are clean and keep their own PBR textures
     o.geometry = cleanGeometry(o.geometry);
     const mats = Array.isArray(o.material) ? o.material : [o.material];
     const repl = mats.map((m) => material(m.name));
@@ -128,14 +173,14 @@ function prepare(obj, def) {
   });
   // Models point down +X. Rotate so the barrel points down -Z.
   const holder = new THREE.Group();
-  obj.rotation.y = Math.PI / 2;
+  obj.rotation.y = def.flip ? -Math.PI / 2 : Math.PI / 2;
   holder.add(obj);
   holder.updateMatrixWorld(true);
   let box = new THREE.Box3().setFromObject(holder);
   const size = box.getSize(new THREE.Vector3());
   const s = def.len / size.z;
   obj.scale.setScalar(s);
-  texturise(obj, s);
+  if (!def.glb) texturise(obj, s);
   holder.updateMatrixWorld(true);
   box = new THREE.Box3().setFromObject(holder);
   // origin: grip point along the gun, top of the gun slightly above origin
@@ -172,8 +217,16 @@ export async function loadGunModels(onProgress) {
   await Promise.all(ids.map(async (id) => {
     const def = GUN_DEFS[id];
     try {
-      let src = cacheByFile.get(def.file);
-      if (!src) { src = loader.loadAsync(`/assets/guns/${def.file}.obj`); cacheByFile.set(def.file, src); }
+      const key = def.glb || def.file;
+      let src = cacheByFile.get(key);
+      if (!src) {
+        if (def.glb) {
+          const gl = new GLTFLoader();
+          gl.setMeshoptDecoder(MeshoptDecoder);
+          src = gl.loadAsync(`/assets/props/${def.glb}.glb`).then((g) => g.scene);
+        } else src = loader.loadAsync(`/assets/guns/${def.file}.obj`);
+        cacheByFile.set(key, src);
+      }
       const obj = (await src).clone(true);
       prepared.set(id, prepare(obj, def));
     } catch (e) {

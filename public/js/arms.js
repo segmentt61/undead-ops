@@ -41,8 +41,8 @@ function basis(fingers, palm) {
 // Hand placement in gun space (gun points down -Z, origin at the grip, top of gun ~ +0.06)
 export const HAND_POSES = {
   pistol: {
-    right: { pos: [0.012, -0.07, 0.085], rot: basis([0, 0.35, -1], [-1, 0, 0]), fingers: GRIP },
-    left: { pos: [-0.035, -0.1, 0.09], rot: basis([0.35, 0.55, -1], [0.8, 0.2, 0]), fingers: HOLD },
+    right: { pos: [0.012, -0.075, 0.08], rot: basis([0, 0.35, -1], [-1, 0, 0]), fingers: GRIP },
+    left: { pos: [-0.035, -0.1, 0.085], rot: basis([0.35, 0.55, -1], [0.8, 0.2, 0]), fingers: HOLD },
   },
   rifle: {
     right: { pos: [0.012, -0.075, 0.09], rot: basis([0, 0.3, -1], [-1, 0, 0]), fingers: GRIP },

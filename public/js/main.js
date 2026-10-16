@@ -17,6 +17,7 @@ import { loadRig, setRigLowRes } from './rig.js';
 import { GamepadControls, TouchControls, isTouchDevice } from './controls.js';
 import { MenuBackdrop } from './menu3d.js';
 import { preloadAll, setLowRes, loadEnvironment } from './pbr.js';
+import { loadRealProps } from './props.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const $ = (id) => document.getElementById(id);
@@ -51,7 +52,7 @@ let envMap = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(),
 // phones get the 512 px textures
 setLowRes(quality === QUALITY.low);
 setRigLowRes(quality === QUALITY.low);
-const texturesReady = preloadAll();
+const texturesReady = Promise.all([preloadAll(), loadRealProps()]);
 // swap the stand-in reflections for the real HDRI once it is in
 loadEnvironment(renderer, (tex) => {
   envMap = tex;
