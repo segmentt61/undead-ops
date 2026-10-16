@@ -52,10 +52,43 @@ export const GUN_DEFS = {
 const prepared = new Map(); // id -> { group, muzzle, top }
 let bipod = null;
 
+// Drop zero-area triangles: their normals come out as NaN, which turns into black blocks once bloom spreads them.
+function cleanGeometry(geo) {
+  const pos = geo.attributes.position;
+  const keep = [];
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  const groups = geo.groups.length ? geo.groups : [{ start: 0, count: pos.count, materialIndex: 0 }];
+  const newGroups = [];
+  for (const g of groups) {
+    const start = keep.length;
+    for (let i = g.start; i < g.start + g.count; i += 3) {
+      a.fromBufferAttribute(pos, i); b.fromBufferAttribute(pos, i + 1); c.fromBufferAttribute(pos, i + 2);
+      if (b.sub(a).cross(c.sub(a)).lengthSq() > 1e-14) keep.push(i, i + 1, i + 2);
+    }
+    newGroups.push({ start, count: keep.length - start, materialIndex: g.materialIndex });
+  }
+  const out = new THREE.BufferGeometry();
+  for (const name of Object.keys(geo.attributes)) {
+    const src = geo.attributes[name];
+    const arr = new src.array.constructor(keep.length * src.itemSize);
+    keep.forEach((idx, j) => { for (let k = 0; k < src.itemSize; k++) arr[j * src.itemSize + k] = src.array[idx * src.itemSize + k]; });
+    out.setAttribute(name, new THREE.BufferAttribute(arr, src.itemSize));
+  }
+  if (geo.groups.length) for (const g of newGroups) out.addGroup(g.start, g.count, g.materialIndex);
+  out.computeVertexNormals();
+  // any normal that is still invalid gets a safe default
+  const n = out.attributes.normal.array;
+  for (let i = 0; i < n.length; i += 3) {
+    const l = Math.hypot(n[i], n[i + 1], n[i + 2]);
+    if (!(l > 0.5)) { n[i] = 0; n[i + 1] = 1; n[i + 2] = 0; }
+  }
+  return out;
+}
+
 function prepare(obj, def) {
   obj.traverse((o) => {
     if (!o.isMesh) return;
-    o.geometry.computeVertexNormals();
+    o.geometry = cleanGeometry(o.geometry);
     const mats = Array.isArray(o.material) ? o.material : [o.material];
     const repl = mats.map((m) => material(m.name));
     o.material = Array.isArray(o.material) ? repl : repl[0];

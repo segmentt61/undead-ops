@@ -14,15 +14,18 @@ import { PostFX, QUALITY } from './post.js';
 import { loadGunModels } from './assets.js';
 import { loadArms } from './arms.js';
 import { loadRig } from './rig.js';
+import { GamepadControls, TouchControls, isTouchDevice } from './controls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const $ = (id) => document.getElementById(id);
 
 // ------------------------------------------------------------------ settings
-const settings = { sens: 1, adsSens: 0.8, fov: 85, vol: 0.7, music: 0.5, gfx: 'high', dynres: true, showFps: true, invertY: false, toggleAds: false, gore: 'extreme', crosshair: '#ffffff', rockMusic: true };
+const settings = { sens: 1, padSens: 1, touchSens: 1, aimAssist: true, vibration: true, adsSens: 0.8, fov: 85, vol: 0.7, music: 0.5, gfx: 'high', dynres: true, showFps: true, invertY: false, toggleAds: false, gore: 'extreme', crosshair: '#ffffff', rockMusic: true };
 const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome|Chromium|Edg|Firefox/.test(navigator.userAgent);
 // Safari's WebGL is slower, so it starts on Medium unless the player picked something
 if (isSafari) settings.gfx = 'medium';
+const touchDevice = isTouchDevice();
+if (touchDevice) { settings.gfx = 'low'; settings.sens = 1; }
 try { Object.assign(settings, JSON.parse(localStorage.getItem('uo-settings') || '{}')); } catch { /* ignore */ }
 const saveSettings = () => { try { localStorage.setItem('uo-settings', JSON.stringify(settings)); } catch { /* ignore */ } };
 audio.setVolume(settings.vol);
@@ -32,7 +35,7 @@ audio.setMusicVolume(settings.music);
 const quality = QUALITY[settings.gfx] || QUALITY.high;
 const renderer = new THREE.WebGLRenderer({ antialias: !quality.post, powerPreference: 'high-performance' });
 const maxPR = Math.min(window.devicePixelRatio, quality.pixelRatio);
-const minPR = Math.min(maxPR, 0.6);
+const minPR = Math.min(maxPR, touchDevice ? 0.5 : 0.6);
 let curPR = maxPR;
 renderer.setPixelRatio(curPR);
 renderer.shadowMap.enabled = quality.shadows;
@@ -52,6 +55,7 @@ const game = {
   me: { id: 0, perks: [], grenades: 2, downed: false, dead: false, hp: 100, maxHp: 100, spawned: false, bleed: 0, selfRevive: false, reviveT: 0 },
   players: new Map(), hostId: 0, state: 'menu', round: 0, roomName: '',
   box: { state: 'idle', pid: 0, weapon: null }, papBusy: false, insta: 0, dbl: 0, lastThrow: 0,
+  inputMode: 'kb',
 };
 window.__game = game;
 
@@ -237,6 +241,12 @@ async function loadAssets() {
 
 async function join(room = '', create = null) {
   audio.init();
+  if (touchDevice) {
+    try {
+      if (!document.fullscreenElement) await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+      if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
+    } catch { /* not supported (e.g. iOS) */ }
+  }
   const name = playerName();
   if (!room && !create) room = 'public';
   $('menuError').textContent = '';
@@ -275,8 +285,12 @@ $('quitBtn').addEventListener('click', () => leave());
 $('goMenuBtn').addEventListener('click', () => leave());
 $('copyLinkBtn').addEventListener('click', (e) => copyInvite(e.target));
 $('copyLinkBtn2').addEventListener('click', (e) => copyInvite(e.target));
-$('resumeBtn').addEventListener('click', lockPointer);
+$('resumeBtn').addEventListener('click', resumeGame);
 $('clickToPlay').addEventListener('click', lockPointer);
+function resumeGame() {
+  if (game.inputMode === 'kb') lockPointer();
+  else showScreen(null);
+}
 
 // ------------------------------------------------------------------ settings screen
 let settingsReturn = 'menu';
@@ -288,7 +302,7 @@ $('settingsBtn').addEventListener('click', () => openSettings('menu'));
 $('pauseSettingsBtn').addEventListener('click', () => openSettings('pauseMenu'));
 $('settingsBack').addEventListener('click', () => showScreen(settingsReturn));
 
-const fmtSetting = { sens: (v) => v.toFixed(2), adsSens: (v) => v.toFixed(2), fov: (v) => v, vol: (v) => Math.round(v * 100) + '%', music: (v) => Math.round(v * 100) + '%' };
+const fmtSetting = { padSens: (v) => v.toFixed(2), touchSens: (v) => v.toFixed(2), sens: (v) => v.toFixed(2), adsSens: (v) => v.toFixed(2), fov: (v) => v, vol: (v) => Math.round(v * 100) + '%', music: (v) => Math.round(v * 100) + '%' };
 function applySetting(key) {
   if (key === 'vol') audio.setVolume(settings.vol);
   if (key === 'music') audio.setMusicVolume(settings.music);
@@ -327,12 +341,20 @@ function lockPointer() {
 const locked = () => document.pointerLockElement === renderer.domElement;
 document.addEventListener('pointerlockchange', () => {
   if (locked()) {
+    game.inputMode = 'kb';
     showScreen(null);
-  } else if (game.state === 'playing' && !chatOpen) {
+  } else if (game.state === 'playing' && !chatOpen && game.inputMode === 'kb') {
     showScreen('pauseMenu');
     input.reset();
   }
 });
+// clicking the game view grabs the mouse again
+renderer.domElement.addEventListener('click', () => {
+  if (game.state === 'playing' && !locked() && !anyScreen() && game.inputMode !== 'touch') lockPointer();
+});
+const anyScreen = () => ['menu', 'lobby', 'clickToPlay', 'pauseMenu', 'gameOver', 'loading', 'createScreen', 'settingsScreen'].some((id) => !$(id).classList.contains('hidden'));
+// mouse/keyboard, controller or touch: whichever was used last drives the game
+const controlsOn = () => !chatOpen && (locked() || (game.inputMode !== 'kb' && !anyScreen()));
 document.addEventListener('pointerlockerror', () => { if (game.state === 'playing') showScreen('clickToPlay'); });
 
 // ------------------------------------------------------------------ input
@@ -374,6 +396,7 @@ function releaseHold() {
 }
 
 window.addEventListener('keydown', (e) => {
+  if (locked()) game.inputMode = 'kb';
   if (game.state !== 'playing' || chatOpen) return;
   if (e.code === 'Tab') { e.preventDefault(); scoreboardOpen = true; return; }
   if ((e.code === 'KeyT' || e.code === 'Enter') && game.me.spawned) { e.preventDefault(); openChat(); return; }
@@ -508,7 +531,8 @@ net.on('spawn', (m) => {
   hud.downed(false);
   hud.setPerks([]);
   hud.show(true);
-  if (!locked()) showScreen('clickToPlay');
+  if (game.inputMode === 'kb' && !locked()) showScreen('clickToPlay');
+  else if (game.inputMode !== 'kb') showScreen(null);
 });
 
 net.on('s', (m) => {
@@ -674,6 +698,7 @@ net.on('zlimb', (m) => game.zombies.limb(m.id, m.l, m.d));
 net.on('hurt', (m) => {
   me.hp = m.hp;
   hurtFx = 1;
+  rumble(0.9, 0.5, 220);
   audio.hurt();
   game.player.shake = Math.max(game.player.shake, 0.025);
   const p = game.player;
@@ -773,9 +798,15 @@ function computeInteract() {
   return best;
 }
 
+function useLabel() {
+  if (game.inputMode === 'pad') return gamepad.labels.use;
+  if (game.inputMode === 'touch') return 'USE';
+  return 'F';
+}
+
 function interactText(it) {
   if (!it) return '';
-  const F = '<b>F</b>';
+  const F = `<b>${useLabel()}</b>`;
   const cost = (c) => ` [Cost: <b>${c}</b>]`;
   const power = game.world.power;
   const solo = [...game.players.values()].filter((p) => p.spawned).length <= 1;
@@ -860,16 +891,39 @@ function step(dt) {
   const p = game.player;
   const active = game.state === 'playing' && me.spawned;
 
+  const pad = gamepad.poll(dt);
+  const touchState = touch.poll();
+  touch.show(game.state === 'playing' && me.spawned && !me.dead && game.inputMode === 'touch' && !anyScreen());
   if (active && !me.dead) {
-    const inputOn = locked() && !chatOpen;
+    const inputOn = controlsOn();
     const slot = w.active();
-    p.update(dt, {
-      f: inputOn ? input.f : 0,
-      r: inputOn ? input.r : 0,
-      jump: inputOn && input.keys.has('Space'),
-      sprint: inputOn && (input.keys.has('ShiftLeft') || input.keys.has('ShiftRight')) && !w.trigger,
-      crouch: inputOn && (input.keys.has('KeyC') || input.keys.has('ControlLeft')),
-    }, w.adsT, slot ? slot.stats.move : 1);
+    const kbOn = inputOn && locked();
+    const clamp1 = (v) => Math.max(-1, Math.min(1, v));
+    let f = kbOn ? input.f : 0, r = kbOn ? input.r : 0;
+    let jump = kbOn && input.keys.has('Space');
+    let sprint = kbOn && (input.keys.has('ShiftLeft') || input.keys.has('ShiftRight'));
+    let crouch = kbOn && (input.keys.has('KeyC') || input.keys.has('ControlLeft'));
+    if (inputOn && pad) {
+      f = clamp1(f + pad.move[1]); r = clamp1(r + pad.move[0]);
+      jump = jump || pad.jump; sprint = sprint || pad.sprint; crouch = crouch || pad.crouch;
+      // right stick: expo curve, slower while aiming, aim assist slows the turn over a zombie
+      const curve = (v) => Math.sign(v) * Math.pow(Math.abs(v), 1.8);
+      const ads = w.adsEase();
+      let rate = 2.9 * settings.padSens * w.fovMult() * (1 - ads + ads * settings.adsSens);
+      if (settings.aimAssist && aimOnTarget()) rate *= 0.42;
+      const dx = curve(pad.look[0]) * rate * dt, dy = curve(pad.look[1]) * rate * dt;
+      p.look(dx / 0.0022, (settings.invertY ? -dy : dy) / 0.0022, 1);
+      w.lookDX += dx * 300; w.lookDY += dy * 300;
+    }
+    if (inputOn && game.inputMode === 'touch') {
+      f = clamp1(f + touchState.move[1]); r = clamp1(r + touchState.move[0]);
+      jump = jump || touchState.jump; sprint = sprint || touchState.sprint; crouch = crouch || touchState.crouch;
+      const ads = w.adsEase();
+      const k = 0.0042 * settings.touchSens * w.fovMult() * (1 - ads + ads * settings.adsSens) * (settings.aimAssist && aimOnTarget() ? 0.6 : 1);
+      p.look(touchState.lookPx[0] * k / 0.0022, (settings.invertY ? -touchState.lookPx[1] : touchState.lookPx[1]) * k / 0.0022, 1);
+      w.lookDX += touchState.lookPx[0]; w.lookDY += touchState.lookPx[1];
+    }
+    p.update(dt, { f, r, jump, sprint: sprint && !w.trigger, crouch }, w.adsT, slot ? slot.stats.move : 1);
     p.applyCamera(camera);
     w.update(dt);
     audio.setListener(p.pos.x, p.pos.z, p.yaw);
@@ -885,6 +939,7 @@ function step(dt) {
     // interaction prompt
     currentInteract = computeInteract();
     hud.prompt(interactText(currentInteract));
+    touch.setUse(currentInteract ? 1 : 0);
     if (holdingId && holdingId.startsWith('rev:')) {
       const r = game.remotes.get(+holdingId.slice(4));
       const need = me.perks.includes('revive') ? REVIVE_TIME_QR : REVIVE_TIME;
@@ -929,6 +984,110 @@ function step(dt) {
   post.render(dt, active && !me.dead, { desat: me.downed ? 0.85 : me.dead ? 0.6 : lowHp * 0.5, hurt: Math.max(hurtFx, me.downed ? 0.5 : 0) });
 }
 window.__step = step;
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
+
+// ------------------------------------------------------------------ controller & touch actions
+function rumble(strong, weak, ms) {
+  if (settings.vibration && game.inputMode === 'pad') gamepad.vibrate(strong, weak, ms);
+}
+game.rumble = rumble;
+let aimCheckT = 0, aimHit = false;
+function aimOnTarget() {
+  const now = performance.now();
+  if (now - aimCheckT < 50) return aimHit;
+  aimCheckT = now;
+  const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+  const hits = game.zombies ? game.zombies.raycast(camera.position, dir, 40) : [];
+  aimHit = hits.length > 0;
+  return aimHit;
+}
+let toastTimer = null;
+function focusables() {
+  const screen = ['settingsScreen', 'createScreen', 'pauseMenu', 'gameOver', 'lobby', 'clickToPlay', 'menu'].map((id) => $(id)).find((el) => !el.classList.contains('hidden'));
+  if (!screen) return [];
+  return [...screen.querySelectorAll('button:not([disabled]), input, select, summary')].filter((el) => el.offsetParent !== null);
+}
+const actions = {
+  setMode(mode) {
+    if (game.inputMode === mode) return;
+    game.inputMode = mode;
+    document.body.classList.toggle('touch', mode === 'touch');
+    if (mode !== 'kb' && document.pointerLockElement) document.exitPointerLock();
+    if (mode !== 'kb' && game.state === 'playing' && !$('clickToPlay').classList.contains('hidden')) showScreen(null);
+  },
+  inGame: () => game.state === 'playing' && me.spawned,
+  paused: () => !$('pauseMenu').classList.contains('hidden') || !$('settingsScreen').classList.contains('hidden'),
+  pause() {
+    if (actions.paused()) return resumeGame();
+    input.reset();
+    showScreen('pauseMenu');
+    const f = focusables(); if (f[0]) f[0].focus();
+  },
+  resume: () => resumeGame(),
+  useOrReload(down, onlyUse = false) {
+    const w = game.weapons;
+    if (!w || me.dead) return;
+    if (down) {
+      if (currentInteract && !me.downed) {
+        if (currentInteract.hold) { holdingId = currentInteract.id; net.send({ t: 'hold', id: holdingId }); }
+        else net.send({ t: 'use', id: currentInteract.id });
+      } else if (!onlyUse) w.reload();
+    } else releaseHold();
+  },
+  reload: () => game.weapons && game.weapons.reload(),
+  swap: (slot) => game.weapons && game.weapons.swap(slot),
+  grenade() {
+    const w = game.weapons;
+    if (w && w.canAct() && !me.downed && me.grenades > 0) { game.lastThrow = performance.now(); w.throwNade(); }
+  },
+  knife: () => game.weapons && game.weapons.knife(),
+  trigger(on) {
+    const w = game.weapons;
+    if (!w || me.dead) return;
+    if (on && !w.trigger) w.triggerFresh = true;
+    w.trigger = on;
+  },
+  ads(on) { if (game.weapons) game.weapons.adsHeld = on; },
+  adsToggle() { if (game.weapons) game.weapons.adsHeld = !game.weapons.adsHeld; },
+  scoreboard(on) { scoreboardOpen = on; },
+  menuMove(dir, horizontal = false) {
+    const el = document.activeElement;
+    if (horizontal && el && el.tagName === 'SELECT') {
+      el.selectedIndex = Math.max(0, Math.min(el.options.length - 1, el.selectedIndex + dir));
+      el.dispatchEvent(new Event('change'));
+      return;
+    }
+    if (horizontal && el && el.type === 'range') {
+      el.value = +el.value + dir * (+el.step || 0.1) * 2;
+      el.dispatchEvent(new Event('input'));
+      return;
+    }
+    const list = focusables();
+    if (!list.length) return;
+    const i = list.indexOf(el);
+    const next = list[(i + (horizontal ? dir : dir) + list.length) % list.length] || list[0];
+    next.focus();
+    next.scrollIntoView({ block: 'nearest' });
+  },
+  menuClick() {
+    const el = document.activeElement;
+    if (!$('clickToPlay').classList.contains('hidden')) { showScreen(null); return; }
+    if (el && el !== document.body && focusables().includes(el)) el.click();
+    else { const f = focusables(); if (f[0]) f[0].focus(); }
+  },
+  menuBack() {
+    if (!$('settingsScreen').classList.contains('hidden')) $('settingsBack').click();
+    else if (!$('createScreen').classList.contains('hidden')) $('createBack').click();
+    else if (!$('pauseMenu').classList.contains('hidden')) resumeGame();
+  },
+  toast(text) {
+    if (game.state === 'playing') hud.subnotice(text, 2500);
+    else { $('menuError').textContent = text; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('menuError').textContent = ''; }, 3000); }
+  },
+};
+const gamepad = new GamepadControls(actions);
+const touch = new TouchControls(actions);
+if (touchDevice) actions.setMode('touch');
 window.__buildScene = buildScene;
 frame();
 

@@ -409,6 +409,7 @@ export class Weapons {
       e: end ? [r2(end.x), r2(end.y), r2(end.z)] : null,
     });
     audio.shot(st.sound, undefined, undefined, true, s.pap);
+    if (g.rumble) g.rumble(Math.min(1, st.recoil * 0.12), Math.min(1, st.recoil * 0.2), st.cls === 'shotgun' || st.kind === 'thunder' ? 160 : 60);
     g.player.addRecoil(st.recoil * (1 - this.adsEase() * 0.45));
     this.kick = Math.min(1.5, this.kick + st.recoil * 0.25);
     this.bloom = Math.min(6, this.bloom + st.recoil * 0.3);

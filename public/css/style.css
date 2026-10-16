@@ -206,3 +206,66 @@ label.check input { width: 18px; height: 18px; accent-color: var(--red-glow); }
   .menu-layout { flex-direction: column; overflow: auto; }
   .menu-panel.side, .menu-panel.browser { width: min(520px, calc(100vw - 32px)); }
 }
+
+/* ---------- touch controls (phones / tablets) ---------- */
+#touchUI { position: fixed; inset: 0; z-index: 15; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+#tLookZone { position: absolute; inset: 0; }
+#tStick { position: absolute; left: 50px; top: calc(100% - 190px); width: 120px; height: 120px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.35); background: rgba(0,0,0,0.18); opacity: 0.45; pointer-events: none; }
+#tStick.on { opacity: 1; }
+#tKnob { position: absolute; left: 35px; top: 35px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.5); box-shadow: 0 0 12px rgba(0,0,0,0.5); }
+#tButtons { position: absolute; right: 14px; bottom: 14px; width: 280px; height: 260px; pointer-events: none; }
+.tbtn { position: absolute; pointer-events: auto; width: 62px; height: 62px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.5); background: rgba(10,10,14,0.45); color: #fff; font: 700 12px var(--text); letter-spacing: 0.5px; touch-action: none; padding: 0; -webkit-tap-highlight-color: transparent; }
+.tbtn.on { background: rgba(208,31,31,0.75); border-color: #fff; }
+.tbtn.big { width: 96px; height: 96px; font-size: 16px; right: 0; bottom: 18px; background: rgba(160,20,20,0.5); }
+.tbtn.small { width: 52px; height: 52px; font-size: 10px; }
+.tbtn[data-b=ads] { right: 108px; bottom: 6px; }
+.tbtn[data-b=jump] { right: 18px; bottom: 128px; }
+.tbtn[data-b=crouch] { right: 100px; bottom: 82px; }
+.tbtn[data-b=reload] { right: 176px; bottom: 10px; }
+.tbtn[data-b=nade] { right: 170px; bottom: 76px; }
+.tbtn[data-b=knife] { right: 92px; bottom: 150px; }
+.tbtn[data-b=swap] { right: 160px; bottom: 140px; }
+.tbtn.use { right: 40px; bottom: 206px; width: 96px; height: 46px; border-radius: 23px; opacity: 0.25; }
+.tbtn.use.ready { opacity: 1; background: rgba(255,207,63,0.55); color: #111; border-color: #ffcf3f; animation: pulse 1.2s infinite; }
+#tPause { position: fixed; right: 10px; top: 8px; width: 42px; height: 42px; font-size: 14px; }
+#tScore { position: fixed; right: 60px; top: 8px; width: 42px; height: 42px; font-size: 16px; }
+
+/* HUD layout when playing with touch: keep the bottom corners free for thumbs */
+body.touch #roundBox { left: 14px; bottom: auto; top: 6px; }
+body.touch #roundNum { font-size: 46px; }
+body.touch #roundNum svg { height: 46px; }
+body.touch #perkIcons { left: 14px; bottom: auto; top: 62px; }
+body.touch .perk { width: 32px; height: 32px; font-size: 11px; }
+body.touch #scoreList { right: 112px; bottom: auto; top: 8px; }
+body.touch .score { font-size: 15px; min-width: 70px; }
+body.touch .score.me { font-size: 19px; }
+body.touch #ammoBox { right: 50%; transform: translateX(50%); bottom: 6px; text-align: center; }
+body.touch #ammoText { font-size: 30px; }
+body.touch #ammoRes { font-size: 18px; }
+body.touch #weaponName { font-size: 13px; }
+body.touch #grenades { font-size: 14px; }
+body.touch #activePowerups { bottom: 72px; }
+body.touch #chatLog { top: 100px; bottom: auto; width: 38vw; font-size: 12px; }
+body.touch #prompt { top: 58%; font-size: 15px; white-space: normal; text-align: center; max-width: 60vw; }
+body.touch #notice { font-size: 32px; top: 14%; }
+body.touch #subnotice { font-size: 16px; top: calc(14% + 42px); }
+body.touch #netInfo { top: auto; bottom: 2px; right: 6px; font-size: 10px; }
+body.touch #downedBox, body.touch #deadBox { top: 22%; }
+body.touch .bar { width: 46vw; }
+body.touch #crosshair { --gap: 8px; }
+
+/* small landscape screens: tighter menus */
+@media (max-height: 520px) {
+  .menu-panel { padding: 14px 16px; gap: 8px; }
+  .logo { font-size: 34px; } .logo span { font-size: 40px; }
+  .tagline { font-size: 11px; margin: 0; }
+  .btn.big { font-size: 18px; padding: 9px; }
+  .menu-layout { flex-direction: row; overflow: visible; }
+  .menu-panel.side { width: 300px; }
+  .menu-panel.browser { width: min(520px, calc(100vw - 340px)); }
+  .controls { display: none; }
+  .settings-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+}
+
+/* gamepad focus ring for menu navigation */
+.btn:focus-visible, .map-card:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }

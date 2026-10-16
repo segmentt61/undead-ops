@@ -68,6 +68,23 @@ const GradeShader = {
     }`,
 };
 
+// Replaces NaN / infinite pixels (from any bad geometry or shader) and clamps extreme HDR values
+// so the bloom blur can never smear them into black rectangles.
+const SanitizeShader = {
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: /* glsl */`
+    varying vec2 vUv;
+    void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */`
+    uniform sampler2D tDiffuse;
+    varying vec2 vUv;
+    void main() {
+      vec4 c = texture2D(tDiffuse, vUv);
+      if (any(isnan(c)) || any(isinf(c))) c = vec4(0.0, 0.0, 0.0, 1.0);
+      gl_FragColor = vec4(clamp(c.rgb, 0.0, 48.0), 1.0);
+    }`,
+};
+
 export class PostFX {
   constructor(renderer, quality) {
     this.renderer = renderer;
@@ -122,6 +139,7 @@ export class PostFX {
 
     this.vmPass = new OverlayPass(viewScene, viewCam);
     composer.addPass(this.vmPass);
+    composer.addPass(new ShaderPass(SanitizeShader));
 
     if (this.q.bloom) {
       this.bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), 0.55, 0.55, 0.92);

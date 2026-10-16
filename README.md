@@ -75,6 +75,37 @@ Railway, Fly.io or any VPS work the same way (`npm install && npm start`, `PORT`
 | T or Enter | Chat |
 | Esc | Pause menu (sensitivity, FOV, volume) |
 
+### Controller (PS4 / PS5 / Xbox)
+
+Plug in over USB or pair with Bluetooth, then press any button. Button prompts switch to
+PlayStation symbols automatically.
+
+| Xbox | PlayStation | Action |
+| --- | --- | --- |
+| Left stick / L3 | Left stick / L3 | Move / toggle sprint |
+| Right stick | Right stick | Look |
+| RT / LT | R2 / L2 | Fire / Aim down sights |
+| A | ✕ | Jump (menus: select) |
+| B | ○ | Crouch (menus: back) |
+| X | □ | Use / buy — hold to rebuild and revive; reloads otherwise |
+| Y / D-pad ← → | △ / D-pad ← → | Switch weapon |
+| LB | L1 | Grenade |
+| RB / R3 | R1 / R3 | Knife |
+| View / D-pad ↑ | Share / D-pad ↑ | Scoreboard |
+| Menu | Options | Pause |
+
+Stick sensitivity, aim assist and vibration are in **Settings → Controls**.
+
+### Phones and tablets (Android)
+
+Open the game URL in Chrome. On-screen controls appear automatically: a floating joystick on
+the left half, drag anywhere on the right to look, and buttons for fire, aim, jump, crouch,
+reload, grenade, knife, swap and use. Hold FIRE or AIM and slide to steer while shooting.
+
+To install it like an app: Chrome menu ⋮ → **Install app** (or **Add to Home screen**). It
+then starts fullscreen in landscape with its own icon. Graphics start on **Low** on touch
+devices; raise it in Settings if your device is fast.
+
 ## How a game goes
 
 - You start in the **Lobby** with an M1911 and 500 points. Points come from hitting (+10),
