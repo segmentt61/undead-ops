@@ -25,7 +25,8 @@ export default function mall() {
   // atrium fountain and benches
   B.block(24, 19, 'fountain', [2, 2]);
   B.crate(19, 16, 'bench', [2, 1]); B.crate(29, 16, 'bench', [2, 1]); B.crate(19, 23, 'bench', [2, 1]); B.crate(29, 23, 'bench', [2, 1]);
-  B.block(17, 25, 'planter'); B.block(32, 25, 'planter'); B.block(17, 14, 'planter'); B.block(32, 14, 'planter');
+  B.block(16, 13, 'planter'); B.block(33, 13, 'planter'); B.block(16, 26, 'planter'); B.block(33, 26, 'planter');
+  B.block(29, 19, 'kiosk', [2, 2]); B.decor(22, 15, 'cart'); B.decor(27, 24, 'body');
   // gun store counters
   B.crate(8, 17, 'counter', [3, 1]);
   // food court tables
@@ -33,12 +34,16 @@ export default function mall() {
   B.block(16, 9, 'vending'); B.block(33, 3, 'vending');
   // department store shelves
   for (const x of [38, 43]) { B.block(x, 5, 'shelf', [1, 5]); B.block(x, 15, 'shelf', [1, 6]); }
-  // parking cars and pillars
-  B.block(6, 24, 'car', [2, 1]); B.block(11, 27, 'car', [2, 1]); B.block(6, 30, 'car', [2, 1]);
-  B.block(9, 28, 'pillar');
+  // gun store lockers, food stall counter, mannequins
+  B.block(11, 20, 'lockers', [2, 1], Math.PI);
+  B.crate(30, 10, 'counter', [2, 1]); B.decor(21, 10, 'trash');
+  B.block(36, 12, 'mannequin'); B.block(40, 12, 'mannequin'); B.block(41, 22, 'mannequin'); B.decor(45, 10, 'cart');
+  // parking garage: full-size cars around a pillar
+  B.block(6, 23, 'car', [2, 4]); B.block(11, 23, 'car2', [2, 4]); B.block(6, 29, 'car3', [2, 4]); B.block(11, 28, 'car', [2, 4]);
+  B.block(9, 28, 'pillar'); B.decor(13, 26, 'rubble');
 
   B.perk('revive', 16, 25, -1, 0);
-  B.wallbuy('olympia', 17, 13, 0, -1);
+  B.wallbuy('olympia', 20, 13, 0, -1);
   B.wallbuy('m14', 4, 14, -1, 0);
   B.wallbuy('mp40', 14, 13, 1, 0);
   B.wallbuy('stakeout', 6, 13, 0, -1);

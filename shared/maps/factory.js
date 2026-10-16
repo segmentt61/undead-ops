@@ -35,6 +35,18 @@ export default function factory() {
   B.crate(22, 8, 'labtable', [2, 1]); B.crate(29, 8, 'labtable', [2, 1]); B.block(25, 11, 'tank');
   // stores shelving
   for (const x of [37, 41]) { B.block(x, 7, 'shelf', [1, 2]); B.block(x, 11, 'shelf', [1, 2]); }
+  // loading bay
+  B.crate(8, 30, 'pallet'); B.crate(13, 26, 'pallet'); B.decor(11, 29, 'trash');
+  // factory floor: conveyor between the machines, workbench, stock
+  B.crate(29, 25, 'conveyor', [6, 1]);
+  B.crate(41, 18, 'workbench', [2, 1]); B.crate(22, 19, 'boxes'); B.crate(33, 30, 'pallet');
+  B.decor(37, 27, 'body'); B.decor(30, 21, 'rubble');
+  // furnace room
+  B.crate(14, 16, 'workbench', [2, 1]); B.decor(10, 12, 'rubble');
+  // lab
+  B.block(23, 12, 'tank'); B.block(31, 12, 'tank'); B.crate(28, 12, 'desk', [2, 1]); B.block(33, 5, 'filing');
+  // generator stores
+  B.block(42, 12, 'generator', [2, 1]); B.crate(39, 13, 'pallet');
 
   B.perk('revive', 17, 23, 1, 0);
   B.wallbuy('olympia', 5, 22, 0, -1);

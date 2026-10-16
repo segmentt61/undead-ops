@@ -94,6 +94,12 @@ export class PostFX {
   }
 
   setup(scene, camera, viewScene, viewCam) {
+    // free the previous pipeline's render targets (every new map or menu visit rebuilds it)
+    if (this.composer) {
+      for (const pass of this.composer.passes) pass.dispose?.();
+      this.composer.dispose();
+      this.composer = null;
+    }
     this.scene = scene;
     this.camera = camera;
     this.viewScene = viewScene;

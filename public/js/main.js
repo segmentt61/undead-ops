@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MAP, setMap, MAP_LIST, BOARDS_PER_WINDOW } from '/shared/map.js';
+import { MAP, setMap, getMap, MAP_LIST, BOARDS_PER_WINDOW, T } from '/shared/map.js';
 import { PERKS, POWERUP_NAMES, BOX_COST, PAP_COST, PAP_AMMO_COST, REVIVE_TIME, REVIVE_TIME_QR, BLEEDOUT_TIME, SOLO_QR_TIME } from '/shared/config.js';
 import { WEAPONS, weaponStats } from '/shared/weapons.js';
 import { World } from './world.js';
@@ -15,6 +15,7 @@ import { loadGunModels } from './assets.js';
 import { loadArms } from './arms.js';
 import { loadRig } from './rig.js';
 import { GamepadControls, TouchControls, isTouchDevice } from './controls.js';
+import { MenuBackdrop } from './menu3d.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const $ = (id) => document.getElementById(id);
@@ -77,8 +78,16 @@ function showScreen(name) {
   for (const id of ['menu', 'lobby', 'clickToPlay', 'pauseMenu', 'gameOver', 'loading', 'createScreen', 'settingsScreen']) $(id).classList.toggle('hidden', id !== name);
 }
 
+// geometry of a scene we are throwing away (materials and textures are shared and cached)
+function disposeScene(scene) {
+  if (!scene) return;
+  scene.traverse((o) => { if ((o.isMesh || o.isInstancedMesh || o.isPoints || o.isLineSegments) && o.geometry) o.geometry.dispose(); });
+}
+
 function buildScene(ws) {
   if (game.weapons) game.weapons.clearNades();
+  if (game.scene && game.scene !== menuBg?.scene) disposeScene(game.scene);
+  introShown = false;
   setMap(ws.map);
   game.mapId = MAP.id;
   audio.setRain(0);
@@ -121,10 +130,56 @@ function buildScene(ws) {
   camera.lookAt(MAP.w / 2, 0, MAP.h / 2);
 }
 
+// Tactical mini-map of a layout: rooms tinted by their lamp colour, doors gold, windows red.
+const miniCache = new Map();
+function drawMiniMap(canvas, id) {
+  const W = 192, H = 120;
+  canvas.width = W; canvas.height = H;
+  const x = canvas.getContext('2d');
+  if (miniCache.has(id)) { x.drawImage(miniCache.get(id), 0, 0); return; }
+  const m = getMap(id);
+  const s = Math.min((W - 12) / m.w, (H - 12) / m.h), ox = (W - m.w * s) / 2, oy = (H - m.h * s) / 2;
+  x.fillStyle = '#0b0a0d'; x.fillRect(0, 0, W, H);
+  x.strokeStyle = 'rgba(255,255,255,0.04)'; x.lineWidth = 1;
+  for (let i = 0; i < W; i += 12) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, H); x.stroke(); }
+  for (let j = 0; j < H; j += 12) { x.beginPath(); x.moveTo(0, j); x.lineTo(W, j); x.stroke(); }
+  const col = new THREE.Color();
+  for (let cy = 0; cy < m.h; cy++)
+    for (let cx = 0; cx < m.w; cx++) {
+      const t = m.grid[cy * m.w + cx];
+      if (t === T.WALL || t === T.YARD) continue;
+      const z = m.zone[cy * m.w + cx];
+      if (t === T.DOOR) x.fillStyle = '#ffcf3f';
+      else if (t === T.WINDOW) x.fillStyle = '#ff3b2f';
+      else {
+        col.set(z >= 0 ? m.rooms[z].light : 0x888888).lerp(new THREE.Color('#1a1820'), t === T.FLOOR ? 0.62 : 0.3);
+        x.fillStyle = `#${col.getHexString()}`;
+      }
+      x.fillRect(ox + cx * s, oy + cy * s, Math.ceil(s), Math.ceil(s));
+    }
+  // start room outline and machines
+  const r0 = m.rooms[0];
+  x.strokeStyle = 'rgba(255,255,255,0.8)'; x.lineWidth = 1.2;
+  x.strokeRect(ox + r0.x0 * s, oy + r0.y0 * s, (r0.x1 - r0.x0 + 1) * s, (r0.y1 - r0.y0 + 1) * s);
+  for (const o of m.objects) {
+    if (o.type === 'wall') continue;
+    x.fillStyle = o.type === 'pap' ? '#c86bff' : o.type === 'power' ? '#ffffff' : '#5be37d';
+    x.beginPath(); x.arc(ox + (o.x + 0.5) * s, oy + (o.y + 0.5) * s, Math.max(1.6, s * 0.55), 0, 7); x.fill();
+  }
+  const copy = document.createElement('canvas'); copy.width = W; copy.height = H;
+  copy.getContext('2d').drawImage(canvas, 0, 0);
+  miniCache.set(id, copy);
+}
+function mapCard(m, sel, disabled = false) {
+  return `<button class="map-card${sel ? ' sel' : ''}" data-map="${m.id}" ${disabled ? 'disabled' : ''}>
+    <canvas data-mini="${m.id}"></canvas><b>${esc(m.name)}</b><span>${esc(m.desc)}</span><i class="diff-${esc(m.difficulty)}">${esc(m.difficulty)}</i></button>`;
+}
+function fillMiniMaps(el) { el.querySelectorAll('canvas[data-mini]').forEach((c) => drawMiniMap(c, c.dataset.mini)); }
+
 function renderMapPicker(el) {
   const host = game.hostId === game.me.id;
-  el.innerHTML = MAP_LIST.map((m) => `<button class="map-card${m.id === game.mapId ? ' sel' : ''}" data-map="${m.id}" ${host ? '' : 'disabled'}>
-    <b>${esc(m.name)}</b><span>${esc(m.desc)}</span><i>${esc(m.difficulty)}</i></button>`).join('');
+  el.innerHTML = MAP_LIST.map((m) => mapCard(m, m.id === game.mapId, !host)).join('');
+  fillMiniMaps(el);
 }
 for (const id of ['lobbyMaps', 'goMaps']) {
   $(id).addEventListener('click', (e) => {
@@ -183,7 +238,16 @@ async function refreshRooms() {
       <td><button class="btn" data-join="${esc(r.code)}" ${r.players >= r.max ? 'disabled' : ''}>${r.players >= r.max ? 'FULL' : 'JOIN'}</button></td>
     </tr>`).join('');
   $('serverEmpty').classList.toggle('hidden', serverCache.length > 0);
+  $('srvCount').textContent = serverCache.length;
 }
+$('browseBtn').addEventListener('click', () => {
+  refreshRooms();
+  const panel = document.querySelector('.menu-panel.browser');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  panel.classList.remove('flash'); void panel.offsetWidth; panel.classList.add('flash');
+  const first = panel.querySelector('button[data-join]');
+  if (first) first.focus();
+});
 $('serverList').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-join]');
   if (b) join(b.dataset.join);
@@ -206,7 +270,8 @@ $('quickBtn').addEventListener('click', async () => {
 // Create server screen
 let createMap = 'kino';
 function renderCreateMaps() {
-  $('createMaps').innerHTML = MAP_LIST.map((m) => `<button class="map-card${m.id === createMap ? ' sel' : ''}" data-map="${m.id}"><b>${esc(m.name)}</b><span>${esc(m.desc)}</span><i>${esc(m.difficulty)}</i></button>`).join('');
+  $('createMaps').innerHTML = MAP_LIST.map((m) => mapCard(m, m.id === createMap)).join('');
+  fillMiniMaps($('createMaps'));
 }
 $('createMaps').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-map]');
@@ -227,7 +292,11 @@ async function loadAssets() {
   if (assetsLoaded) return;
   const label = $('loading').querySelector('.ctp');
   let g = 0, a = 0, c = 0;
-  const show = () => { label.textContent = `LOADING ${Math.round((g + a + c) * 33.3)}%`; };
+  const show = () => {
+    const k = Math.min(1, (g + a + c) / 3);
+    label.textContent = `LOADING ${Math.round(k * 100)}%`;
+    $('loadBar').style.width = `${k * 100}%`;
+  };
   show();
   await Promise.all([
     loadGunModels((p) => { g = p; show(); }),
@@ -236,7 +305,30 @@ async function loadAssets() {
     loadRig().then(() => { c = 1; show(); }).catch((e) => console.warn('characters failed', e)),
   ]);
   label.textContent = 'CONNECTING…';
+  $('loadBar').style.width = '100%';
   assetsLoaded = true;
+}
+
+const TIPS = [
+  'Headshots pay more points than body shots — and knife kills pay the most.',
+  'Rebuild boards on the windows for easy points between waves.',
+  'Turn the power on to wake up the perk machines and Pack-a-Punch.',
+  'Juggernog lets you take more hits. Buy it early.',
+  'Quick Revive lets you revive yourself when you play alone (3 times).',
+  'Heavy weapons and shotguns can blow limbs off. Legless zombies crawl.',
+  'The Mystery Box moves when the teddy bear shows up.',
+  'Grenades on a crowd behind a window are the best points in the game.',
+  'Hold the use button on a downed teammate to revive them.',
+  'Max Ammo refills every gun — even the ones in your teammates\' hands.',
+];
+let tipTimer = null;
+function startTips() {
+  const el = $('loadTip');
+  let i = Math.floor(Math.random() * TIPS.length);
+  const next = () => { el.textContent = `TIP: ${TIPS[i++ % TIPS.length]}`; };
+  next();
+  clearInterval(tipTimer);
+  tipTimer = setInterval(() => { if ($('loading').classList.contains('hidden')) clearInterval(tipTimer); else next(); }, 3500);
 }
 
 async function join(room = '', create = null) {
@@ -255,6 +347,7 @@ async function join(room = '', create = null) {
   if (!room && !create) room = 'public';
   $('menuError').textContent = '';
   showScreen('loading');
+  startTips();
   try {
     await document.fonts.load('30px "Permanent Marker"');
     await document.fonts.load('30px "Black Ops One"');
@@ -280,7 +373,31 @@ function leave(msg = '') {
   $('menuError').textContent = msg;
   history.replaceState(null, '', '/');
   refreshRooms();
+  disposeScene(game.scene);
+  game.scene = null;
+  enterMenuBackdrop();
 }
+
+// ------------------------------------------------------------------ menu backdrop
+let menuBg = null;
+const menuViewCam = new THREE.PerspectiveCamera();
+function enterMenuBackdrop() {
+  if (!menuBg) menuBg = new MenuBackdrop(camera, quality);
+  else setMap(menuBg.mapId);
+  camera.fov = 62; camera.updateProjectionMatrix();
+  post.setup(menuBg.scene, camera, menuBg.viewScene, menuViewCam);
+}
+// build it right after the menu has painted, so the page shows up instantly
+requestAnimationFrame(() => setTimeout(() => { if (game.state === 'menu' && !menuBg) enterMenuBackdrop(); }, 30));
+// menu music starts with the first click or key press (browsers block audio before that)
+const startMenuAudio = () => {
+  if (game.state !== 'menu') return;
+  audio.init();
+  audio.loadSamples();
+  audio.setMusicMode('calm');
+};
+document.addEventListener('pointerdown', startMenuAudio, { once: true, capture: true });
+document.addEventListener('keydown', startMenuAudio, { once: true, capture: true });
 
 $('startBtn').addEventListener('click', () => { audio.init(); game.net.send({ t: 'start' }); });
 $('restartBtn').addEventListener('click', () => game.net.send({ t: 'restart' }));
@@ -454,13 +571,25 @@ document.addEventListener('mousemove', (e) => {
   game.weapons.lookDY += e.movementY;
 });
 
-window.addEventListener('resize', () => {
+function onResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   post.setSize(window.innerWidth, window.innerHeight, curPR);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   if (game.weapons) game.weapons.setAspect(camera.aspect);
-});
+}
+window.addEventListener('resize', onResize);
+// phones rotate and show/hide browser bars without always firing 'resize'
+window.addEventListener('orientationchange', () => setTimeout(onResize, 250));
+if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
+let sizeCheck = 0;
+function checkCanvasSize(dt) {
+  sizeCheck -= dt;
+  if (sizeCheck > 0) return;
+  sizeCheck = 0.5;
+  const c = renderer.domElement;
+  if (Math.abs(c.clientWidth - window.innerWidth) > 1 || Math.abs(c.clientHeight - window.innerHeight) > 1) onResize();
+}
 
 // ------------------------------------------------------------------ network handlers
 const net = game.net;
@@ -538,7 +667,21 @@ net.on('spawn', (m) => {
   hud.show(true);
   if (game.inputMode === 'kb' && !locked()) showScreen('clickToPlay');
   else if (game.inputMode !== 'kb') showScreen(null);
+  lastZone = -2;
+  if (!introShown) {
+    introShown = true;
+    // always the dead of night
+    const hrs = `0${Math.floor(Math.random() * 4)}${String(Math.floor(Math.random() * 60)).padStart(2, '0')} HRS`;
+    const room = MAP.rooms[Math.max(0, zoneAtCell(m.x, m.z))];
+    hud.intro([MAP.name.toUpperCase(), room ? room.name : '', hrs, `ROUND ${Math.max(1, game.round)} — SURVIVE`]);
+  }
 });
+let introShown = false, lastZone = -2;
+function zoneAtCell(x, z) {
+  const cx = Math.floor(x), cz = Math.floor(z);
+  if (cx < 0 || cz < 0 || cx >= MAP.w || cz >= MAP.h) return -1;
+  return MAP.zone[cz * MAP.w + cx];
+}
 
 net.on('s', (m) => {
   if (!game.scene) return;
@@ -888,9 +1031,18 @@ function frame() {
 
 function step(dt) {
   fpsAcc += dt; fpsFrames++;
+  checkCanvasSize(dt);
   if (fpsAcc > 0.5) { fps = Math.round(fpsFrames / fpsAcc); fpsAcc = 0; fpsFrames = 0; adaptResolution(fps); }
 
-  if (!game.scene) { renderer.clear(); return; }
+  if (game.state === 'menu' || !game.scene) {
+    gamepad.poll(dt);
+    touch.show(false);
+    if (menuBg && game.state === 'menu' && !document.hidden) {
+      menuBg.update(dt);
+      post.render(dt, false);
+    } else renderer.clear();
+    return;
+  }
   const renderTs = net.serverNow() - 110;
   const w = game.weapons;
   const p = game.player;
@@ -939,6 +1091,13 @@ function step(dt) {
       sendAcc = 0;
       const flags = (p.crouch ? 4 : 0) | (p.sprinting ? 8 : 0) | (w.adsT > 0.5 ? 16 : 0);
       net.send({ t: 'st', p: [+p.pos.x.toFixed(2), +p.pos.y.toFixed(2), +p.pos.z.toFixed(2)], yaw: +p.yaw.toFixed(3), pitch: +p.pitch.toFixed(3), f: flags, w: w.cur });
+    }
+
+    // room name callout
+    const zNow = zoneAtCell(p.pos.x, p.pos.z);
+    if (zNow >= 0 && zNow !== lastZone) {
+      if (lastZone !== -2) hud.zone(MAP.rooms[zNow].name);
+      lastZone = zNow;
     }
 
     // interaction prompt

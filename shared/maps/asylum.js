@@ -35,6 +35,17 @@ export default function asylum() {
   // shower stalls
   B.block(34, 27, 'stall', [1, 2]); B.block(40, 27, 'stall', [1, 2]);
   B.decor(27, 21, 'wheelchair'); B.decor(38, 21, 'wheelchair');
+  // reception
+  B.crate(21, 18, 'gurney', [1, 2]); B.block(28, 22, 'filing'); B.decor(25, 15, 'papers');
+  // kitchen island and sink
+  B.crate(9, 17, 'counter', [3, 1]); B.crate(8, 23, 'sink', [1, 1], Math.PI); B.decor(13, 19, 'trash');
+  // dining
+  B.crate(25, 9, 'table', [2, 1]); B.decor(18, 8, 'body'); B.decor(8, 4, 'rubble');
+  // ward: more beds and curtains
+  B.crate(33, 10, 'bed', [1, 2]); B.crate(39, 10, 'bed', [1, 2]); B.block(36, 17, 'curtain', [1, 2]);
+  B.crate(33, 19, 'gurney', [1, 2]); B.block(41, 21, 'filing'); B.decor(38, 8, 'body');
+  // showers
+  B.block(34, 30, 'stall', [1, 2]); B.block(40, 30, 'stall', [1, 2]); B.crate(38, 25, 'sink');
 
   B.perk('revive', 18, 20, -1, 0);
   B.wallbuy('olympia', 20, 14, 0, -1);

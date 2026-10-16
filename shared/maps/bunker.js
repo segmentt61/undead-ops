@@ -26,6 +26,14 @@ export default function bunker() {
   B.crate(6, 9, 'crate'); B.crate(7, 9, 'crate'); B.crate(9, 15, 'barrel'); B.crate(10, 15, 'barrel'); B.crate(5, 16, 'sandbags'); B.crate(6, 16, 'sandbags');
   B.block(35, 15, 'shelf', [1, 3]);
   B.crate(31, 19, 'crate');
+  // bunker
+  B.crate(20, 16, 'ammo'); B.crate(15, 16, 'crates'); B.decor(21, 17, 'rubble'); B.decor(23, 14, 'body');
+  // radio room
+  B.block(16, 9, 'bunk', [1, 2]); B.block(25, 9, 'filing');
+  // storage
+  B.block(37, 17, 'shelf', [1, 2]); B.crate(32, 16, 'pallet'); B.crate(36, 20, 'ammo'); B.decor(33, 14, 'trash');
+  // courtyard: a burnt-out car
+  B.block(9, 10, 'car3', [2, 4]); B.decor(4, 19, 'rubble'); B.decor(10, 6, 'trash');
 
   B.wallbuy('olympia', 15, 12, 0, -1);
   B.wallbuy('m14', 27, 13, 1, 0);

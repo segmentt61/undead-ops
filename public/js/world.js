@@ -7,6 +7,8 @@ import * as TX from './textures.js';
 import * as MD from './models.js';
 import * as SF from './surfaces.js';
 import { buildProps } from './props.js';
+import { buildDecals } from './decals.js';
+import { goreCfg } from './entities.js';
 
 // Surfaces are expensive to paint, so they are generated once and shared between rebuilds.
 let SURF = null;
@@ -84,7 +86,7 @@ export class World {
     s.fog = new THREE.FogExp2(th.fog || '#0a0c14', th.fogDensity || 0.03);
     this.baseFog = th.fogDensity || 0.03;
 
-    this.hemi = new THREE.HemisphereLight(th.hemiSky || '#7d8cb8', th.hemiGround || '#3a2a1c', th.bright ? 0.8 : 0.55);
+    this.hemi = new THREE.HemisphereLight(th.hemiSky || '#7d8cb8', th.hemiGround || '#3a2a1c', th.bright ? 0.62 : 0.5);
     this.baseHemi = this.hemi.intensity;
     s.add(this.hemi);
     this.moon = new THREE.DirectionalLight('#7f95ff', 0.6);
@@ -102,6 +104,11 @@ export class World {
     this.buildObjects();
     this.buildBox();
     buildProps(this.scene, MAP.props);
+    // keep posters and blood off the wall-buys, perks and box spots
+    const avoid = [];
+    for (const o of MAP.objects) for (const d of [-1, 0, 1]) avoid.push([o.x + (o.face[1] ? d : 0), o.y + (o.face[0] ? d : 0)]);
+    for (const b of MAP.boxLocs) for (const d of [-1, 0, 1]) avoid.push([b.x + (b.face[1] ? d : 0), b.y + (b.face[0] ? d : 0)]);
+    buildDecals(this.scene, MAP, styleOf, { gore: goreCfg.level !== 'off', avoid });
     if (th.rain) this.buildRain();
   }
 
@@ -414,7 +421,7 @@ export class World {
       const emissive = new THREE.Color(r.light).lerp(new THREE.Color('#fff'), 0.5);
       // decorative fluorescent tubes across the ceiling (emissive only, no real light)
       if (lamp === 'fluoro') {
-        const tubeMat = new THREE.MeshStandardMaterial({ color: '#000', emissive, emissiveIntensity: 2.2 });
+        const tubeMat = new THREE.MeshStandardMaterial({ color: '#000', emissive, emissiveIntensity: 1.4 });
         for (let ty = r.y0 + 2; ty <= r.y1 - 1; ty += 4)
           for (let tx = r.x0 + 2; tx <= r.x1 - 1; tx += 4) {
             const tube = new THREE.Mesh(tubeGeo, Math.random() < 0.15 ? tubeHousing : tubeMat);
@@ -486,7 +493,9 @@ export class World {
           this.scene.add(cone);
         }
         const flickerChance = this.theme.flicker ?? 0.5;
-        this.roomLights.push({ light, bulb: bulbMat, cone: coneMat, coneBase: coneOpacity, base: 9, flicker: Math.random() < flickerChance, pos, color: new THREE.Color(r.light), shadowed: false });
+        // fluorescent rooms are white-tiled and bounce a lot of light, so their lamps run dimmer
+        const scale = lamp === 'fluoro' ? 0.55 : lamp === 'pole' ? 0.8 : 1;
+        this.roomLights.push({ light, bulb: bulbMat, cone: coneMat, coneBase: coneOpacity, scale, base: 9 * scale, flicker: Math.random() < flickerChance, pos, color: new THREE.Color(r.light), shadowed: false });
       }
     }
     // One shadow-casting light follows the player to the nearest lamp (keeps the light count constant).
@@ -573,6 +582,15 @@ export class World {
     this.box.visible = true;
     this.box.userData.beam.visible = true;
     this.box.userData.lid.rotation.x = 0;
+  }
+
+  boxCollider() {
+    if (!this.box || !this.box.visible || this.boxLoc < 0) return null;
+    const b = MAP.boxLocs[this.boxLoc];
+    const cx = b.x + 0.5 + b.face[0] * 0.12, cz = b.y + 0.5 + b.face[1] * 0.12;
+    const along = b.face[1] !== 0; // box runs along x when it faces north/south
+    const hw = along ? 0.8 : 0.35, hd = along ? 0.35 : 0.8;
+    return { x0: cx - hw, x1: cx + hw, z0: cz - hd, z1: cz + hd };
   }
 
   boxWorldPos() {
@@ -673,11 +691,11 @@ export class World {
     if (this.powerSwitch) this.powerSwitch.userData.setPower(on);
     const apply = (k) => {
       for (const l of this.roomLights) {
-        l.base = 9 + 13 * k;
+        l.base = (9 + 7 * k) * l.scale;
         l.light.intensity = l.shadowed ? 0 : l.base;
         l.cone.opacity = l.coneBase * (1 + 0.7 * k);
       }
-      this.hemi.intensity = this.baseHemi + 0.35 * k;
+      this.hemi.intensity = this.baseHemi + 0.2 * k;
       this.scene.fog.density = this.baseFog * (1 - 0.25 * k);
     };
     if (animate) this.animate(2.5, (k) => apply(k * (0.6 + 0.4 * Math.random())), () => apply(1));

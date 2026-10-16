@@ -54,6 +54,33 @@ export class HUD {
     this.noticeTimer = setTimeout(() => { n.style.opacity = 0; s.style.opacity = 0; }, dur);
   }
 
+  /** Room name callout when you walk into a new area. */
+  zone(name) {
+    const el = $('zoneLabel');
+    el.textContent = name;
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  }
+
+  /** Mission-style title card typed out at the start of a game. */
+  intro(lines) {
+    const el = $('introCard');
+    clearInterval(this.introTimer);
+    el.innerHTML = lines.map((l, i) => `<div class="l${i}"></div>`).join('');
+    el.classList.add('show');
+    const rows = [...el.children];
+    let li = 0, ci = 0;
+    this.introTimer = setInterval(() => {
+      if (li >= lines.length) {
+        clearInterval(this.introTimer);
+        setTimeout(() => el.classList.remove('show'), 2600);
+        return;
+      }
+      ci++;
+      rows[li].textContent = lines[li].slice(0, ci);
+      if (ci >= lines[li].length) { li++; ci = 0; }
+    }, 38);
+  }
+
   subnotice(text, dur = 2500) {
     const s = $('subnotice');
     s.textContent = text;

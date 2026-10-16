@@ -135,6 +135,25 @@ export class MapBuilder {
       if (this.get(b.x + b.face[0], b.y + b.face[1]) !== T.WALL) this.fail(`box location does not face a wall (${b.x},${b.y})`);
     }
     for (const [x, y] of this.playerSpawns) if (this.get(Math.floor(x), Math.floor(y)) !== T.FLOOR) this.fail(`spawn not on floor (${x},${y})`);
+    // perk machines and Pack-a-Punch are solid: players, zombies and bullets stop at them
+    for (const o of this.objects) {
+      if (o.type !== 'perk' && o.type !== 'pap') continue;
+      const ax = o.x - o.face[0], ay = o.y - o.face[1];
+      if (this.get(ax, ay) !== T.FLOOR) this.fail(`${o.id} can't be reached: cell in front (${ax},${ay}) is blocked`);
+      this.set(o.x, o.y, T.BLOCK);
+    }
+    // wall-buys and the power switch need a free spot in front of them
+    for (const o of this.objects) {
+      if (o.type !== 'wall' && o.type !== 'power') continue;
+      const t = this.get(o.x, o.y);
+      if (t !== T.FLOOR) this.fail(`${o.id} is covered by a prop`);
+    }
+    // the mystery box is 1.6 m wide: both cells beside each box spot must be open floor
+    for (const b of this.boxLocs) {
+      const px = b.face[1] !== 0 ? 1 : 0, py = b.face[0] !== 0 ? 1 : 0;
+      for (const s of [-1, 1]) if (this.get(b.x + px * s, b.y + py * s) !== T.FLOOR) this.fail(`box spot (${b.x},${b.y}) is too tight`);
+      if (this.get(b.x - b.face[0], b.y - b.face[1]) !== T.FLOOR) this.fail(`box spot (${b.x},${b.y}) is blocked in front`);
+    }
     // every room reachable from the start room through floor and doors (ignoring props)
     const seen = new Uint8Array(w * h);
     const start = this.rooms[0];

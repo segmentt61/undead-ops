@@ -145,6 +145,19 @@ The host picks the map in the lobby (or on the game-over screen):
 Maps are defined in `shared/maps/*.js` with a small builder (rooms, doors, windows, props) that
 validates the layout. Adding a map = one new file + an entry in `shared/maps/index.js`.
 
+The builder refuses a map that has a prop in front of a perk, wall-buy, window or door, a Mystery
+Box spot that is too tight, or a room the zombies can't reach. Perk machines and Pack-a-Punch are
+solid (you can't walk through them), and so is the Mystery Box. Each room is dressed with props
+(`public/js/props.js`) plus one-off decals — grime, cracks, blood, graffiti, posters and signs
+(`public/js/decals.js`) — so the walls don't look like the same tile repeated.
+
+## Main menu
+
+The menu runs on a live 3D backdrop: a random map, lit like the game, filmed by a slow cinematic
+camera while zombies shamble towards it. Create Server shows a tactical mini-map of each map.
+Loading shows gameplay tips, each game opens with a mission-style title card, and the room name
+pops up when you walk into a new area.
+
 ## Graphics settings
 
 Pause menu (Esc) → **Graphics**:

@@ -22,10 +22,31 @@ export default function kino() {
   B.win(43, 21, 1, 0); B.win(43, 28, 1, 0); B.win(36, 33, 0, 1);
   B.win(38, 3, 0, -1); B.win(44, 3, 0, -1); B.win(49, 10, 1, 0);
 
-  for (const [x, y] of [[18, 9], [19, 9], [18, 10], [26, 12], [27, 12], [36, 21], [36, 22], [44, 8], [45, 8], [44, 9], [7, 24], [8, 24], [39, 27]]) B.crate(x, y);
-  // theater seats and stage props (decoration)
-  for (let x = 13; x <= 29; x += 2) for (const y of [13, 14]) if (x !== 21 && x !== 23) B.decor(x, y, 'seat');
+  // lobby: ticket counter, pillars
+  B.crate(25, 18, 'counter', [3, 1]);
+  B.block(18, 19, 'pillar'); B.block(27, 25, 'pillar');
+  B.decor(17, 27, 'body'); B.decor(22, 27, 'rubble'); B.decor(28, 20, 'trash');
+  // theater hall: rows of seats with a centre aisle
+  for (const y of [8, 10, 12]) { B.crate(13, y, 'seats', [8, 1]); B.crate(25, y, 'seats', [6, 1]); }
+  B.decor(22, 9, 'body'); B.decor(11, 7, 'rubble');
+  // dressing rooms
+  B.block(33, 17, 'lockers', [3, 1]);
+  B.crate(34, 21, 'desk', [2, 1]);
+  B.block(39, 20, 'mannequin');
+  B.block(36, 26, 'curtain', [1, 3]);
+  B.crate(38, 29, 'boxes'); B.crate(33, 28, 'crates'); B.decor(40, 23, 'trash');
+  // generator room
+  B.block(8, 20, 'generator', [2, 1]);
+  B.block(12, 21, 'tank');
+  B.crate(11, 27, 'workbench', [2, 1]);
+  B.crate(7, 25, 'barrel'); B.crate(8, 25, 'barrel');
+  B.decor(6, 28, 'rubble');
+  // projector lab
   B.block(46, 13, 'projector');
+  B.crate(36, 7, 'labtable', [2, 1]);
+  B.crate(42, 9, 'desk', [2, 1]);
+  B.block(47, 15, 'filing');
+  B.crate(35, 12, 'boxes'); B.decor(44, 12, 'papers');
 
   B.wallbuy('olympia', 20, 17, 0, -1);
   B.wallbuy('m14', 29, 26, 1, 0);

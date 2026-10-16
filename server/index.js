@@ -43,12 +43,13 @@ const rooms = new Map();
 
 const server = http.createServer((req, res) => {
   // test-mode only: the page can upload a rendered frame for inspection
-  if (process.env.DEV_POINTS && req.method === 'POST' && req.url === '/dev/shot') {
+  if (process.env.DEV_POINTS && req.method === 'POST' && req.url.startsWith('/dev/shot')) {
+    const shotName = (new URL(req.url, 'http://x').searchParams.get('name') || 'devshot').replace(/[^\w-]/g, '');
     const chunks = [];
     req.on('data', (c) => chunks.push(c));
     req.on('end', () => {
       const data = Buffer.concat(chunks).toString().replace(/^data:image\/\w+;base64,/, '');
-      fs.writeFileSync(path.join(process.env.DEV_SHOT_DIR || ROOT, 'devshot.jpg'), Buffer.from(data, 'base64'));
+      fs.writeFileSync(path.join(process.env.DEV_SHOT_DIR || ROOT, `${shotName}.jpg`), Buffer.from(data, 'base64'));
       res.writeHead(200).end('ok');
     });
     return;

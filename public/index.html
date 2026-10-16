@@ -22,43 +22,33 @@
   <div id="game"></div>
 
   <!-- ===================== MAIN MENU ===================== -->
-  <div id="menu" class="screen">
-    <div class="menu-bg"></div>
-    <div class="menu-layout">
-      <div class="menu-panel side">
+  <div id="menuFade"></div>
+  <div id="menu" class="screen menu-main">
+    <div class="menu-shade"></div>
+    <div class="menu-grain"></div>
+    <header class="menu-top">
+      <div class="brand">
         <h1 class="logo">UNDEAD<span>OPS</span></h1>
         <div class="tagline">ONLINE CO-OP ZOMBIES</div>
-        <div id="iosHint" class="ios-hint hidden">For fullscreen on iPhone: tap <b>Share</b> &#x2B06;&#xFE0E; then <b>Add to Home Screen</b>, and play from the new icon.<button id="iosHintClose" aria-label="Close">&times;</button></div>
-        <label>Your name<input id="nameInput" maxlength="16" placeholder="Survivor" /></label>
-        <button id="quickBtn" class="btn big">QUICK PLAY</button>
-        <div class="btn-row">
-          <button id="createBtn" class="btn">CREATE SERVER</button>
-          <button id="settingsBtn" class="btn ghost">SETTINGS</button>
-        </div>
+      </div>
+      <label class="name-card"><span>Operator</span><input id="nameInput" maxlength="16" placeholder="Survivor" autocomplete="off" spellcheck="false" /></label>
+    </header>
+    <div class="menu-body">
+      <nav class="menu-nav">
+        <button id="quickBtn" class="nav-item primary"><b>Quick Play</b><small>Drop into the busiest public game</small></button>
+        <button id="createBtn" class="nav-item"><b>Create Server</b><small>Pick a map and invite your squad</small></button>
+        <button id="browseBtn" class="nav-item browse-toggle"><b>Server Browser</b><small><span id="srvCount">0</span> public games online</small></button>
+        <button id="settingsBtn" class="nav-item"><b>Settings</b><small>Controls, graphics and audio</small></button>
         <div class="join-code">
-          <input id="roomInput" maxlength="24" placeholder="Join by code…" />
+          <input id="roomInput" maxlength="24" placeholder="Have a code? Join by code…" autocomplete="off" spellcheck="false" />
           <button id="playBtn" class="btn small">JOIN</button>
         </div>
-        <details class="controls">
-          <summary>Controls</summary>
-          <div class="grid">
-            <b>WASD</b><span>Move</span><b>Mouse</b><span>Aim / Fire / ADS (right)</span>
-            <b>Shift</b><span>Sprint</span><b>Space</b><span>Jump</span>
-            <b>C / Ctrl</b><span>Crouch</span><b>R</b><span>Reload</span>
-            <b>F (hold)</b><span>Buy / Open / Rebuild / Revive</span><b>V</b><span>Knife</span>
-            <b>G</b><span>Grenade</span><b>1 / 2 / Wheel</b><span>Switch weapon</span>
-            <b>Tab</b><span>Scoreboard</span><b>T / Enter</b><span>Chat</span>
-          </div>
-          <div class="grid" style="margin-top:10px">
-            <b>Controller</b><span>Left stick move · Right stick look · RT fire · LT aim · A/✕ jump · B/○ crouch · X/□ use + reload · Y/△ swap · LB grenade · RB knife · L3 sprint · Start pause</span>
-            <b>Touch</b><span>Left thumb moves · drag right side to look · FIRE / AIM also steer while held · push the stick all the way forward to sprint</span>
-          </div>
-        </details>
+        <div id="iosHint" class="ios-hint hidden">For fullscreen on iPhone: tap <b>Share</b> &#x2B06;&#xFE0E; then <b>Add to Home Screen</b>, and play from the new icon.<button id="iosHintClose" aria-label="Close">&times;</button></div>
         <div id="menuError" class="error"></div>
-      </div>
-      <div class="menu-panel browser">
+      </nav>
+      <section class="menu-panel browser">
         <div class="browser-head">
-          <h2>SERVER LIST</h2>
+          <h2><i class="live-dot"></i>Server Browser</h2>
           <button id="refreshBtn" class="btn small ghost">&#8635; Refresh</button>
         </div>
         <div class="server-table">
@@ -66,10 +56,27 @@
             <thead><tr><th>Server</th><th>Map</th><th>Players</th><th>Status</th><th></th></tr></thead>
             <tbody id="serverList"></tbody>
           </table>
-          <div id="serverEmpty" class="muted empty">No public servers right now. Create one and your friends will see it here!</div>
+          <div id="serverEmpty" class="muted empty"><b>No public servers right now.</b><br />Hit <em>Quick Play</em> or <em>Create Server</em> and your friends will see it here.</div>
         </div>
-      </div>
+      </section>
     </div>
+    <footer class="menu-foot">
+      <details class="controls">
+        <summary>Controls</summary>
+        <div class="grid">
+          <b>WASD</b><span>Move</span><b>Mouse</b><span>Aim / Fire / ADS (right)</span>
+          <b>Shift</b><span>Sprint</span><b>Space</b><span>Jump</span>
+          <b>C / Ctrl</b><span>Crouch</span><b>R</b><span>Reload</span>
+          <b>F (hold)</b><span>Buy / Open / Rebuild / Revive</span><b>V</b><span>Knife</span>
+          <b>G</b><span>Grenade</span><b>1 / 2 / Wheel</b><span>Switch weapon</span>
+          <b>Tab</b><span>Scoreboard</span><b>T / Enter</b><span>Chat</span>
+          <b>Controller</b><span>Left stick move · Right stick look · RT fire · LT aim · A/✕ jump · B/○ crouch · X/□ use + reload · Y/△ swap · LB grenade · RB knife · L3 sprint · Start pause</span>
+          <b>Touch</b><span>Left thumb moves · drag right side to look · FIRE / AIM also steer while held · push the stick all the way forward to sprint</span>
+        </div>
+      </details>
+      <span id="menuMapLabel" class="map-label"></span>
+      <span class="input-hint">Mouse &amp; keyboard · PS / Xbox controller · Touch</span>
+    </footer>
   </div>
 
   <!-- ===================== CREATE SERVER ===================== -->
@@ -155,6 +162,8 @@
     <div id="hitmarker"></div>
     <div id="prompt"></div>
     <div id="notice"></div>
+    <div id="zoneLabel"></div>
+    <div id="introCard"></div>
     <div id="subnotice"></div>
     <div id="roundBox"><div id="roundNum"></div></div>
     <div id="perkIcons"></div>
@@ -209,7 +218,15 @@
     </div>
   </div>
 
-  <div id="loading" class="screen hidden"><div class="ctp">CONNECTING…</div></div>
+  <div id="loading" class="screen hidden">
+    <div class="menu-bg"></div>
+    <div class="load-wrap">
+      <div class="logo">UNDEAD<span>OPS</span></div>
+      <div class="ctp">CONNECTING…</div>
+      <div class="load-bar"><div id="loadBar"></div></div>
+      <div id="loadTip" class="load-tip"></div>
+    </div>
+  </div>
 
   <script type="module" src="/js/main.js"></script>
   <div id="rotateHint"><div class="phone"></div>Turn your phone sideways to play</div>

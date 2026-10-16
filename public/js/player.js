@@ -55,6 +55,14 @@ export class LocalPlayer {
   collide(height) {
     const r = C.PLAYER_RADIUS;
     for (let iter = 0; iter < 3; iter++) {
+      // the mystery box moves around the map, so it is a loose box collider instead of a grid cell
+      const bx = this.world.boxCollider && this.world.boxCollider();
+      if (bx && this.pos.y < 1.0) {
+        const px = Math.max(bx.x0, Math.min(this.pos.x, bx.x1));
+        const pz = Math.max(bx.z0, Math.min(this.pos.z, bx.z1));
+        const dx = this.pos.x - px, dz = this.pos.z - pz, d = Math.hypot(dx, dz);
+        if (d < r && d > 1e-5) { this.pos.x += (dx / d) * (r - d); this.pos.z += (dz / d) * (r - d); }
+      }
       const cx = Math.floor(this.pos.x), cy = Math.floor(this.pos.z);
       for (let y = cy - 1; y <= cy + 1; y++)
         for (let x = cx - 1; x <= cx + 1; x++) {

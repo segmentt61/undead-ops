@@ -194,7 +194,6 @@ export function tiles(a = '#cbc2ae', b = '#2c2420') {
       }
     speckle(x, s, s, 18, rnd);
     blotches(x, s, s, rnd, 10, '0,0,0', 0.25);
-    blotches(x, s, s, rnd, 4, '90,0,0', 0.45, 10, 50);
   }, { strength: 3, roughness: 0.45 });
 }
 
@@ -374,11 +373,10 @@ export function tileWall(upper = '#d8ddd2', lower = '#4f7a62', seed = 53) {
         const c = new THREE.Color(j === 0 && lower !== upper ? lower : upper).offsetHSL(0, 0, (rnd() - 0.5) * 0.05);
         x.fillStyle = `#${c.getHexString()}`; x.fillRect(i * t + 2, j * t + 2, t - 4, t - 4);
         h.fillStyle = '#c8c8c8'; h.fillRect(i * t + 2, j * t + 2, t - 4, t - 4);
-        if (rnd() < 0.06) { x.fillStyle = 'rgba(40,40,30,0.8)'; x.fillRect(i * t + 2, j * t + 2, t - 4, t - 4); h.fillStyle = '#606060'; h.fillRect(i * t + 2, j * t + 2, t - 4, t - 4); }
+        if (rnd() < 0.015) { x.fillStyle = 'rgba(70,66,52,0.35)'; x.fillRect(i * t + 2, j * t + 2, t - 4, t - 4); }
       }
     speckle(x, s, s, 16, rnd);
     blotches(x, s, s, rnd, 16, '40,30,10', 0.28);
-    blotches(x, s, s, rnd, 3, '90,0,0', 0.4, 8, 30);
   }, { strength: 2.4, roughness: 0.35 });
 }
 
@@ -390,9 +388,9 @@ export function plasterWall(base = '#8a8070', seed = 59) {
     speckle(x, s, s, 16, rnd); speckle(h, s, s, 22, rnd);
     blotches(x, s, s, rnd, 20, '30,20,10', 0.18, 30, 140);
     // peeling patches showing brick
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 1; i++) {
       const px = rnd() * s, py = rnd() * s, pw = 40 + rnd() * 70, ph = 30 + rnd() * 50;
-      x.fillStyle = '#7a3e2c'; x.beginPath(); x.ellipse(px, py, pw / 2, ph / 2, rnd() * 3, 0, 7); x.fill();
+      x.fillStyle = 'rgba(96,74,60,0.55)'; x.beginPath(); x.ellipse(px, py, pw / 2, ph / 2, rnd() * 3, 0, 7); x.fill();
       h.fillStyle = '#505050'; h.beginPath(); h.ellipse(px, py, pw / 2, ph / 2, rnd() * 3, 0, 7); h.fill();
     }
   }, { strength: 1.8, roughness: 0.85 });
@@ -443,7 +441,6 @@ export function marble(seed = 71) {
       for (let q = 0; q < 5; q++) { px += (rnd() - 0.5) * 120; py += (rnd() - 0.5) * 120; x.lineTo(px, py); } x.stroke();
     }
     blotches(x, s, s, rnd, 8, '0,0,0', 0.18);
-    blotches(x, s, s, rnd, 3, '90,0,0', 0.45, 10, 40);
   }, { strength: 1.5, roughness: 0.18 });
 }
 
