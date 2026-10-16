@@ -96,7 +96,7 @@ PlayStation symbols automatically.
 
 Stick sensitivity, aim assist and vibration are in **Settings → Controls**.
 
-### Phones and tablets (Android)
+### Phones and tablets (Android, iPhone, iPad)
 
 Open the game URL in Chrome. On-screen controls appear automatically: a floating joystick on
 the left half, drag anywhere on the right to look, and buttons for fire, aim, jump, crouch,
@@ -105,6 +105,11 @@ reload, grenade, knife, swap and use. Hold FIRE or AIM and slide to steer while 
 To install it like an app: Chrome menu ⋮ → **Install app** (or **Add to Home screen**). It
 then starts fullscreen in landscape with its own icon. Graphics start on **Low** on touch
 devices; raise it in Settings if your device is fast.
+
+**iPhone / iPad:** open the URL in Safari, tap **Share** → **Add to Home Screen**, and start the
+game from the new icon. iPhone Safari can't go fullscreen from a normal tab, so the home-screen
+version is the one without browser bars. Turn the phone sideways to play. Sound plays even with
+the silent switch on (iOS 17+), and PS/Xbox controllers paired over Bluetooth work in Safari too.
 
 ## How a game goes
 

@@ -242,10 +242,14 @@ async function loadAssets() {
 async function join(room = '', create = null) {
   audio.init();
   if (touchDevice) {
+    // Android and iPad support fullscreen; iPhone Safari doesn't (play from the home-screen icon instead)
+    const el = document.documentElement;
+    const fs = el.requestFullscreen || el.webkitRequestFullscreen;
     try {
-      if (!document.fullscreenElement) await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+      if (fs && !(document.fullscreenElement || document.webkitFullscreenElement)) await fs.call(el, { navigationUI: 'hide' });
       if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
-    } catch { /* not supported (e.g. iOS) */ }
+    } catch { /* not supported */ }
+    keepAwake();
   }
   const name = playerName();
   if (!room && !create) room = 'public';
@@ -334,6 +338,7 @@ for (const el of document.querySelectorAll('[data-key]')) {
 // ------------------------------------------------------------------ pointer lock
 function lockPointer() {
   audio.init();
+  if (!renderer.domElement.requestPointerLock) return; // iPhone: no pointer lock, touch controls instead
   const p = renderer.domElement.requestPointerLock();
   if (p && p.catch) p.catch(() => showScreen('clickToPlay'));
 }
@@ -984,6 +989,24 @@ function step(dt) {
   post.render(dt, active && !me.dead, { desat: me.downed ? 0.85 : me.dead ? 0.6 : lowHp * 0.5, hurt: Math.max(hurtFx, me.downed ? 0.5 : 0) });
 }
 window.__step = step;
+
+// keep phones from dimming the screen mid-round (re-requested when the app comes back)
+let wakeLock = null;
+async function keepAwake() {
+  try { if (navigator.wakeLock && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch { /* not allowed */ }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && touchDevice && game.state === 'playing') keepAwake(); });
+
+// iOS ignores user-scalable=no, so block pinch-zoom gestures directly
+for (const ev of ['gesturestart', 'gesturechange']) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+
+// iPhone Safari can't go fullscreen from a web page; suggest the home-screen install once
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const standalone = navigator.standalone === true || matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches;
+if (isIOS && !standalone && !localStorage.getItem('uo-ios-hint')) {
+  $('iosHint').classList.remove('hidden');
+  $('iosHintClose').addEventListener('click', () => { $('iosHint').classList.add('hidden'); try { localStorage.setItem('uo-ios-hint', '1'); } catch { /* ignore */ } });
+}
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
 
 // ------------------------------------------------------------------ controller & touch actions

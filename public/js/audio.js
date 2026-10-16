@@ -39,7 +39,18 @@ class AudioEngine {
     if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
+    // iPhone: play through the ring/silent switch like a video or game would, instead of muting WebAudio
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* older Safari */ }
     this.ctx = new AC();
+    // iOS unlocks audio only when a sound starts inside a tap, so play one silent sample now
+    const unlock = this.ctx.createBufferSource();
+    unlock.buffer = this.ctx.createBuffer(1, 1, 22050);
+    unlock.connect(this.ctx.destination);
+    unlock.start(0);
+    // iOS suspends ("interrupted") the context on calls, Siri or app switches; wake it on the next touch
+    const wake = () => { if (this.ctx.state !== 'running' && !document.hidden) Promise.resolve(this.ctx.resume()).catch(() => {}); };
+    document.addEventListener('visibilitychange', wake);
+    for (const ev of ['pointerdown', 'touchend', 'keydown']) document.addEventListener(ev, wake, true);
     // master -> gentle glue compressor -> brick-wall limiter -> speakers
     this.master = this.ctx.createGain();
     this.master.gain.value = this.volume;

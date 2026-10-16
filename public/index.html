@@ -9,7 +9,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" href="/icons/icon-192.png" />
-  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="/icons/icon-180.png" />
+  <meta name="apple-mobile-web-app-title" content="Undead Ops" />
   <title>Undead Ops</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -27,6 +28,7 @@
       <div class="menu-panel side">
         <h1 class="logo">UNDEAD<span>OPS</span></h1>
         <div class="tagline">ONLINE CO-OP ZOMBIES</div>
+        <div id="iosHint" class="ios-hint hidden">For fullscreen on iPhone: tap <b>Share</b> &#x2B06;&#xFE0E; then <b>Add to Home Screen</b>, and play from the new icon.<button id="iosHintClose" aria-label="Close">&times;</button></div>
         <label>Your name<input id="nameInput" maxlength="16" placeholder="Survivor" /></label>
         <button id="quickBtn" class="btn big">QUICK PLAY</button>
         <div class="btn-row">
@@ -210,5 +212,6 @@
   <div id="loading" class="screen hidden"><div class="ctp">CONNECTING…</div></div>
 
   <script type="module" src="/js/main.js"></script>
+  <div id="rotateHint"><div class="phone"></div>Turn your phone sideways to play</div>
 </body>
 </html>
