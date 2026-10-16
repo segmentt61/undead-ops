@@ -79,9 +79,10 @@ function build(paint, { strength = 2, roughness = 0.8, metalness = 0, normalScal
 export function surfaceMaterial(surface, repeat = [1, 1], extra = {}) {
   const map = surface.map.clone();
   const normalMap = surface.normalMap.clone();
-  for (const t of [map, normalMap]) { t.repeat.set(repeat[0], repeat[1]); t.needsUpdate = true; }
+  const roughnessMap = surface.roughnessMap ? surface.roughnessMap.clone() : null;
+  for (const t of [map, normalMap, roughnessMap]) if (t) { t.repeat.set(repeat[0], repeat[1]); t.needsUpdate = !!t.image; }
   return new THREE.MeshStandardMaterial({
-    map, normalMap, normalScale: surface.normalScale, roughness: surface.roughness, metalness: surface.metalness, ...extra,
+    map, normalMap, roughnessMap, normalScale: surface.normalScale, roughness: surface.roughness, metalness: surface.metalness, ...extra,
   });
 }
 

@@ -16,6 +16,7 @@ import { loadArms } from './arms.js';
 import { loadRig } from './rig.js';
 import { GamepadControls, TouchControls, isTouchDevice } from './controls.js';
 import { MenuBackdrop } from './menu3d.js';
+import { preloadAll, setLowRes, loadEnvironment } from './pbr.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const $ = (id) => document.getElementById(id);
@@ -36,7 +37,7 @@ audio.setMusicVolume(settings.music);
 const quality = QUALITY[settings.gfx] || QUALITY.high;
 const renderer = new THREE.WebGLRenderer({ antialias: !quality.post, powerPreference: 'high-performance' });
 const maxPR = Math.min(window.devicePixelRatio, quality.pixelRatio);
-const minPR = Math.min(maxPR, touchDevice ? 0.5 : 0.6);
+const minPR = Math.min(maxPR, touchDevice ? 0.75 : 0.6); // below this phones look smeared
 let curPR = maxPR;
 renderer.setPixelRatio(curPR);
 renderer.shadowMap.enabled = quality.shadows;
@@ -46,9 +47,18 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.25;
 const post = new PostFX(renderer, quality);
-const envMap = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+let envMap = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+// phones get the 512 px textures
+setLowRes(quality === QUALITY.low);
+const texturesReady = preloadAll();
+// swap the stand-in reflections for the real HDRI once it is in
+loadEnvironment(renderer, (tex) => {
+  envMap = tex;
+  for (const sc of [game.scene, menuBg && menuBg.scene]) if (sc) sc.environment = tex;
+  if (game.weapons) game.weapons.viewScene.environment = tex;
+});
 $('game').appendChild(renderer.domElement);
-const camera = new THREE.PerspectiveCamera(settings.fov, window.innerWidth / window.innerHeight, 0.05, 200);
+const camera = new THREE.PerspectiveCamera(settings.fov, window.innerWidth / window.innerHeight, 0.1, 200);
 
 const game = {
   renderer, camera, scene: null, world: null, fx: null, zombies: null, remotes: null, powerups: null, player: null, weapons: null,
@@ -95,7 +105,7 @@ function buildScene(ws) {
   const scene = new THREE.Scene();
   game.scene = scene;
   scene.environment = envMap;
-  scene.environmentIntensity = 0.18;
+  scene.environmentIntensity = 0.3;
   game.world = new World(scene, quality);
   game.fx = new FX(scene);
   game.fx.onCasingBounce = () => audio.casing();
@@ -128,6 +138,8 @@ function buildScene(ws) {
   // overview camera until we spawn
   camera.position.set(MAP.w / 2, 20, MAP.h + 6);
   camera.lookAt(MAP.w / 2, 0, MAP.h / 2);
+  // compile every shader now, behind the lobby, instead of hitching the first time things appear
+  try { renderer.compile(scene, camera); renderer.compile(game.weapons.viewScene, game.weapons.viewCam); } catch { /* optional */ }
 }
 
 // Tactical mini-map of a layout: rooms tinted by their lamp colour, doors gold, windows red.
@@ -303,6 +315,7 @@ async function loadAssets() {
     audio.loadSamples((p) => { a = p; show(); }),
     loadArms().catch((e) => console.warn('arms failed', e)),
     loadRig().then(() => { c = 1; show(); }).catch((e) => console.warn('characters failed', e)),
+    texturesReady,
   ]);
   label.textContent = 'CONNECTING…';
   $('loadBar').style.width = '100%';
@@ -381,8 +394,10 @@ function leave(msg = '') {
 // ------------------------------------------------------------------ menu backdrop
 let menuBg = null;
 const menuViewCam = new THREE.PerspectiveCamera();
-function enterMenuBackdrop() {
-  if (!menuBg) menuBg = new MenuBackdrop(camera, quality);
+async function enterMenuBackdrop() {
+  await texturesReady;
+  if (game.state !== 'menu') return;
+  if (!menuBg) { menuBg = new MenuBackdrop(camera, quality); menuBg.scene.environment = envMap; menuBg.scene.environmentIntensity = 0.3; }
   else setMap(menuBg.mapId);
   camera.fov = 62; camera.updateProjectionMatrix();
   post.setup(menuBg.scene, camera, menuBg.viewScene, menuViewCam);
@@ -1081,11 +1096,13 @@ function step(dt) {
       p.look(touchState.lookPx[0] * k / 0.0022, (settings.invertY ? -touchState.lookPx[1] : touchState.lookPx[1]) * k / 0.0022, 1);
       w.lookDX += touchState.lookPx[0]; w.lookDY += touchState.lookPx[1];
       // auto-fire: shoot while the crosshair rests on a zombie that is in range and in sight
+      // and holding FIRE always fires continuously too, whatever the gun (semi-autos get a fresh pull each frame)
       const auto = settings.autoFire && autoTarget();
-      if (auto && !touchState.fireHeld) { actions.trigger(false); actions.trigger(true); } // fresh pull, so semi-autos keep firing
-      else if (autoFiring && !touchState.fireHeld) actions.trigger(false);
-      autoFiring = auto;
-      if (auto) sprint = false;
+      const want = auto || touchState.fireHeld;
+      if (want) { actions.trigger(false); actions.trigger(true); }
+      else if (autoFiring) actions.trigger(false);
+      autoFiring = want;
+      if (want) sprint = false;
     }
     p.update(dt, { f, r, jump, sprint: sprint && !w.trigger, crouch }, w.adsT, slot ? slot.stats.move : 1);
     p.applyCamera(camera);

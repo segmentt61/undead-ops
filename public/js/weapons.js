@@ -2,6 +2,15 @@
 import * as THREE from 'three';
 import { weaponStats } from '/shared/weapons.js';
 import { raycastWorld, solidRanges } from '/shared/map.js';
+
+// knife slash keyframes: [time 0..1, position (camera space), rotation (x, y, z)]
+const KNIFE_KEYS = [
+  [0.0, [0.3, -0.32, -0.34], [-0.2, 0.9, -0.4]],
+  [0.16, [0.22, -0.04, -0.42], [0.45, 0.75, -1.1]],
+  [0.34, [0.04, -0.1, -0.5], [0.0, 0.85, 0.15]],
+  [0.55, [-0.14, -0.2, -0.46], [-0.3, 0.7, 0.55]],
+  [1.0, [0.26, -0.46, -0.3], [-0.6, 0.4, 0.1]],
+];
 import { PERKS } from '/shared/config.js';
 import * as MD from './models.js';
 import * as CH from './characters.js';
@@ -609,9 +618,15 @@ export class Weapons {
     const kv = this.knifeVM.root;
     kv.visible = this.state === 'knife';
     if (kv.visible) {
-      const a = Math.min(1, k * 1.6);
-      kv.position.set(0.35 - a * 0.55, -0.18 + Math.sin(a * Math.PI) * 0.06, -0.45);
-      kv.rotation.set(-0.2, 1.2 - a * 2.2, -0.6 + a * 0.4);
+      // BO-style slash: wind up at the right, cut down and across the screen, recover low
+      const K = KNIFE_KEYS;
+      let i = 0;
+      while (i < K.length - 2 && k > K[i + 1][0]) i++;
+      const [t0, p0, r0] = K[i], [t1, p1, r1] = K[i + 1];
+      const u = Math.min(1, Math.max(0, (k - t0) / (t1 - t0)));
+      const e2 = u * u * (3 - 2 * u);
+      kv.position.set(p0[0] + (p1[0] - p0[0]) * e2, p0[1] + (p1[1] - p0[1]) * e2, p0[2] + (p1[2] - p0[2]) * e2);
+      kv.rotation.set(r0[0] + (r1[0] - r0[0]) * e2, r0[1] + (r1[1] - r0[1]) * e2, r0[2] + (r1[2] - r0[2]) * e2);
     }
     this.nadeVM.visible = this.state === 'nade' && !this.nadeThrown;
     if (this.nadeVM.visible) this.nadeVM.position.set(0.25 - k * 0.2, -0.2 + k * 0.25, -0.5);

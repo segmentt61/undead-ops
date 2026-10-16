@@ -19,6 +19,80 @@ export const SKINS = {
   survivorFemaleA: { file: 'survivorFemaleA', shirt: '#d8e8f0', skin: '#a0502a', pants: '#c89060', shoe: '#eee', hair: '#2a1a10' },
 };
 
+// The skins are flat cartoon colours; repaint them with grime, wear, bruising and blood so the
+// characters sit better in the photo-textured world.
+function grittify(img, zombie) {
+  const S = 1024;
+  const c = document.createElement('canvas'); c.width = c.height = S;
+  const x = c.getContext('2d');
+  x.drawImage(img, 0, 0, S, S);
+  const d = x.getImageData(0, 0, S, S), p = d.data;
+  let seed = zombie ? 7 : 3;
+  const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+  // muted, darker palette with fine noise
+  for (let i = 0; i < p.length; i += 4) {
+    const l = (p[i] * 0.3 + p[i + 1] * 0.59 + p[i + 2] * 0.11);
+    const k = zombie ? 0.45 : 0.25; // desaturate
+    let r = p[i] + (l - p[i]) * k, g = p[i + 1] + (l - p[i + 1]) * k, b = p[i + 2] + (l - p[i + 2]) * k;
+    const n = (Math.random() - 0.5) * 26;
+    const dark = zombie ? 0.72 : 0.85;
+    p[i] = (r + n) * dark; p[i + 1] = (g + n) * dark * (zombie ? 1.02 : 1); p[i + 2] = (b + n) * dark * (zombie ? 0.92 : 1);
+  }
+  x.putImageData(d, 0, 0);
+  const blob = (cx, cy, r, color) => {
+    const g = x.createRadialGradient(cx, cy, 0, cx, cy, r);
+    g.addColorStop(0, color); g.addColorStop(1, color.replace(/[\d.]+\)$/, '0)'));
+    x.fillStyle = g; x.fillRect(cx - r, cy - r, r * 2, r * 2);
+  };
+  // grime everywhere
+  for (let i = 0; i < 90; i++) blob(rnd() * S, rnd() * S, 20 + rnd() * 90, `rgba(30,24,14,${0.12 + rnd() * 0.22})`);
+  if (zombie) {
+    // bruises, rot and blood
+    for (let i = 0; i < 40; i++) blob(rnd() * S, rnd() * S, 10 + rnd() * 40, `rgba(60,40,70,${0.15 + rnd() * 0.2})`);
+    for (let i = 0; i < 26; i++) blob(rnd() * S, rnd() * S, 8 + rnd() * 50, `rgba(90,6,6,${0.45 + rnd() * 0.4})`);
+    for (let i = 0; i < 300; i++) { x.fillStyle = `rgba(${70 + rnd() * 40},4,4,${0.4 + rnd() * 0.5})`; x.beginPath(); x.arc(rnd() * S, rnd() * S, 1 + rnd() * 4, 0, 7); x.fill(); }
+    // drips down the shirt area
+    for (let i = 0; i < 18; i++) { x.fillStyle = 'rgba(80,4,4,0.6)'; x.fillRect(160 + rnd() * 320, 520 + rnd() * 200, 3 + rnd() * 5, 30 + rnd() * 140); }
+  }
+  // torn fabric scratches
+  x.strokeStyle = 'rgba(0,0,0,0.25)';
+  for (let i = 0; i < 120; i++) { x.lineWidth = 1 + rnd() * 2; x.beginPath(); const px = rnd() * S, py = rnd() * S; x.moveTo(px, py); x.lineTo(px + (rnd() - 0.5) * 30, py + (rnd() - 0.5) * 30); x.stroke(); }
+  const t = new THREE.CanvasTexture(c);
+  t.anisotropy = 4;
+  return t;
+}
+
+let skinNorm = null;
+function skinNormal() {
+  if (skinNorm) return skinNorm;
+  // fine wrinkly bump: random height field turned into a normal map
+  const S = 256;
+  const h = new Float32Array(S * S);
+  for (let o = 0; o < 4; o++) {
+    const cells = 4 << o, amp = 1 / (o + 1);
+    const g = Array.from({ length: (cells + 1) * (cells + 1) }, () => Math.random());
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const fx = (x / S) * cells, fy = (y / S) * cells, ix = Math.floor(fx), iy = Math.floor(fy), tx = fx - ix, ty = fy - iy;
+      const at = (a, b) => g[(b % (cells + 1)) * (cells + 1) + (a % (cells + 1))];
+      const v = at(ix, iy) * (1 - tx) * (1 - ty) + at(ix + 1, iy) * tx * (1 - ty) + at(ix, iy + 1) * (1 - tx) * ty + at(ix + 1, iy + 1) * tx * ty;
+      h[y * S + x] += v * amp;
+    }
+  }
+  const c = document.createElement('canvas'); c.width = c.height = S;
+  const x = c.getContext('2d'); const img = x.createImageData(S, S);
+  for (let y = 0; y < S; y++) for (let xx = 0; xx < S; xx++) {
+    const H = (a, b) => h[((b + S) % S) * S + ((a + S) % S)];
+    const dx = (H(xx + 1, y) - H(xx - 1, y)) * 3, dy = (H(xx, y + 1) - H(xx, y - 1)) * 3;
+    const l = Math.hypot(dx, dy, 1), k = (y * S + xx) * 4;
+    img.data[k] = (-dx / l * 0.5 + 0.5) * 255; img.data[k + 1] = (dy / l * 0.5 + 0.5) * 255; img.data[k + 2] = (1 / l * 0.5 + 0.5) * 255; img.data[k + 3] = 255;
+  }
+  x.putImageData(img, 0, 0);
+  skinNorm = new THREE.CanvasTexture(c);
+  skinNorm.wrapS = skinNorm.wrapT = THREE.RepeatWrapping;
+  skinNorm.repeat.set(6, 6);
+  return skinNorm;
+}
+
 export async function loadRig() {
   if (source) return;
   const L = new FBXLoader();
@@ -27,10 +101,11 @@ export async function loadRig() {
   clips.idle = idle.animations.find((a) => /Idle/.test(a.name)) || idle.animations[0];
   const tl = new THREE.TextureLoader();
   await Promise.all(Object.entries(SKINS).map(async ([key, def]) => {
-    const t = await tl.loadAsync(`/assets/chars/${def.file}.png`);
+    const raw = await tl.loadAsync(`/assets/chars/${def.file}.png`);
+    const t = grittify(raw.image, key.startsWith('zombie'));
     t.colorSpace = THREE.SRGBColorSpace;
     skins[key] = t;
-    mats[key] = new THREE.MeshStandardMaterial({ map: t, roughness: 0.85 });
+    mats[key] = new THREE.MeshStandardMaterial({ map: t, roughness: 0.78, normalMap: skinNormal(), normalScale: new THREE.Vector2(0.5, 0.5) });
   }));
   source = model;
 }

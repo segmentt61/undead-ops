@@ -8,6 +8,7 @@ import * as MD from './models.js';
 import * as SF from './surfaces.js';
 import { buildProps } from './props.js';
 import { buildDecals } from './decals.js';
+import { PBR, pbrSurface, worldUV } from './pbr.js';
 import { goreCfg } from './entities.js';
 
 // Surfaces are expensive to paint, so they are generated once and shared between rebuilds.
@@ -33,6 +34,7 @@ const LAZY = {
   concCeil: () => SF.concreteWall('#4a4842', 89), darkBricks: () => SF.bricks(),
 };
 function surf(key) {
+  if (PBR[key]) return pbrSurface(key);
   const S = surfaces();
   if (!S[key]) S[key] = LAZY[key] ? LAZY[key]() : S.bricks;
   return S[key];
@@ -40,29 +42,38 @@ function surf(key) {
 
 // Visual style per room: wall/floor/ceiling surfaces, wall tint, wainscot and lamp type.
 const STYLES = {
-  theater:     { wall: 'bricks', tint: '#ffffff', floor: 'tilesA', rep: 0.5, ceil: 'beams', base: true, lamp: 'hanging' },
-  theaterWood: { wall: 'bricks', tint: '#ffd6c2', floor: 'wood', rep: 0.3, ceil: 'beams', base: true, lamp: 'hanging' },
-  dressing:    { wall: 'bricks', tint: '#d6e6ff', floor: 'tilesB', rep: 0.5, ceil: 'beams', base: true, lamp: 'hanging' },
-  generator:   { wall: 'bricks', tint: '#fff0c8', floor: 'concA', rep: 0.2, ceil: 'beams', base: true, lamp: 'cage' },
-  projector:   { wall: 'bricks', tint: '#e2d4ff', floor: 'concB', rep: 0.2, ceil: 'beams', base: true, lamp: 'hanging' },
-  bunker:      { wall: 'concWall', tint: '#d8d4c4', floor: 'concA', rep: 0.25, ceil: 'concCeil', lamp: 'cage' },
-  bunkerWood:  { wall: 'plankWall', tint: '#ffffff', floor: 'wood', rep: 0.3, ceil: 'beams', lamp: 'cage' },
-  courtyard:   { wall: 'stone', tint: '#c8c8c0', floor: 'dirt', rep: 0.2, ceil: null, lamp: 'pole' },
-  ward:        { wall: 'tileGreen', tint: '#ffffff', floor: 'tilesC', rep: 0.5, ceil: 'panels', base: 'tileBaseGreen', lamp: 'fluoro' },
-  kitchen:     { wall: 'tileBlue', tint: '#ffffff', floor: 'tilesA', rep: 0.5, ceil: 'panels', base: 'tileBaseBlue', lamp: 'fluoro' },
-  dining:      { wall: 'plasterWall', tint: '#ffffff', floor: 'wood', rep: 0.3, ceil: 'beams', base: true, lamp: 'hanging' },
-  showers:     { wall: 'tileBlue', tint: '#e8f0ff', floor: 'tilesB', rep: 0.6, ceil: 'panels', base: 'tileBaseBlue', lamp: 'fluoro' },
-  warehouse:   { wall: 'metalWall', tint: '#ffffff', floor: 'concA', rep: 0.2, ceil: 'metalCeil', lamp: 'industrial' },
-  factory:     { wall: 'darkBricks', tint: '#b8a898', floor: 'concA', rep: 0.15, ceil: 'metalCeil', lamp: 'industrial' },
-  furnace:     { wall: 'darkBricks', tint: '#d89070', floor: 'concA', rep: 0.2, ceil: 'beams', lamp: 'cage' },
-  lab:         { wall: 'labWall', tint: '#ffffff', floor: 'tilesC', rep: 0.5, ceil: 'panels', lamp: 'fluoro' },
-  atrium:      { wall: 'shopWall', tint: '#ffffff', floor: 'marble', rep: 0.3, ceil: null, lamp: 'pole' },
-  shop:        { wall: 'shopWall2', tint: '#ffffff', floor: 'marble', rep: 0.3, ceil: 'panels', lamp: 'fluoro' },
-  foodcourt:   { wall: 'shopWall', tint: '#fff0d8', floor: 'tilesA', rep: 0.5, ceil: 'panels', lamp: 'fluoro' },
-  store:       { wall: 'shopWall2', tint: '#ffffff', floor: 'marble', rep: 0.3, ceil: 'panels', lamp: 'fluoro' },
-  parking:     { wall: 'concWall', tint: '#c8ccd0', floor: 'asphalt', rep: 0.2, ceil: 'concCeil', lamp: 'fluoro' },
+  theater:     { wall: 'bricksOld', tint: '#ffffff', floor: 'checker', ceil: 'planks', base: 'woodOld', baseTint: '#a08070', lamp: 'hanging' },
+  theaterWood: { wall: 'bricksOld', tint: '#f2dcd0', floor: 'woodOld', ceil: 'planks', base: 'woodOld', baseTint: '#8a6a58', lamp: 'hanging' },
+  dressing:    { wall: 'bricksOld', tint: '#dfe6f0', floor: 'stoneTiles', ceil: 'planks', base: 'woodOld', baseTint: '#8a7a70', lamp: 'hanging' },
+  generator:   { wall: 'bricksB', tint: '#f0e6d0', floor: 'concrete', floorTint: '#9a9488', ceil: 'planks', lamp: 'cage' },
+  projector:   { wall: 'bricksB', tint: '#e6dcf0', floor: 'concrete', floorTint: '#8a8890', ceil: 'planks', lamp: 'hanging' },
+  bunker:      { wall: 'concrete', tint: '#d8d2c0', floor: 'concrete', floorTint: '#8a857a', ceil: 'concrete', ceilTint: '#6a665e', lamp: 'cage' },
+  bunkerWood:  { wall: 'planks', tint: '#c8b8a0', floor: 'woodOld', ceil: 'planks', lamp: 'cage' },
+  courtyard:   { wall: 'bricksB', tint: '#a8a8a4', floor: 'gravel', ceil: null, lamp: 'pole' },
+  ward:        { wall: 'tilesDirty', tint: '#b8bcb2', floor: 'stoneTiles', floorTint: '#c8ccc0', ceil: 'ceiling', base: 'tilesDirty', baseTint: '#7fa08c', lamp: 'fluoro' },
+  kitchen:     { wall: 'tilesWhite', tint: '#b4b6b0', floor: 'checker', ceil: 'ceiling', base: 'tilesWhite', baseTint: '#86a0b8', lamp: 'fluoro' },
+  dining:      { wall: 'plaster', tint: '#b0a48c', floor: 'woodOld', ceil: 'planks', base: 'woodOld', baseTint: '#7a5a48', lamp: 'hanging' },
+  showers:     { wall: 'tilesWhite', tint: '#aab2ba', floor: 'tilesDirty', floorTint: '#9a9c96', ceil: 'ceiling', base: 'tilesWhite', baseTint: '#6f88a4', lamp: 'fluoro' },
+  warehouse:   { wall: 'corrugated', tint: '#c8ccd0', floor: 'concrete', floorTint: '#9a958a', ceil: 'corrugated', ceilTint: '#6a6e72', lamp: 'industrial' },
+  factory:     { wall: 'bricksB', tint: '#c8b8a8', floor: 'concrete', floorTint: '#8f8a80', ceil: 'corrugated', ceilTint: '#5a5e62', lamp: 'industrial' },
+  furnace:     { wall: 'bricksB', tint: '#e0a888', floor: 'concrete', floorTint: '#8a7a70', ceil: 'planks', lamp: 'cage' },
+  lab:         { wall: 'tilesWhite', tint: '#b0b8bc', floor: 'checker', floorTint: '#d0d8d8', ceil: 'ceiling', lamp: 'fluoro' },
+  atrium:      { wall: 'plaster', tint: '#bab4a8', floor: 'stoneTiles', ceil: null, lamp: 'pole' },
+  shop:        { wall: 'plaster', tint: '#b0acb8', floor: 'stoneTiles', ceil: 'ceiling', lamp: 'fluoro' },
+  foodcourt:   { wall: 'plaster', tint: '#c0b098', floor: 'checker', ceil: 'ceiling', lamp: 'fluoro' },
+  store:       { wall: 'plaster', tint: '#b4b4b4', floor: 'stoneTiles', ceil: 'ceiling', lamp: 'fluoro' },
+  parking:     { wall: 'concrete', tint: '#b8bcc0', floor: 'asphalt', ceil: 'concrete', ceilTint: '#6a6c70', lamp: 'fluoro' },
 };
 const styleOf = (room) => STYLES[room?.style] || STYLES.theater;
+
+// a world-space-mapped material: one texture repeat covers `size` metres, seamless across cells
+function worldMat(key, color) {
+  const sf = surf(key);
+  const k = 1 / (sf.size || 1);
+  const m = SF.surfaceMaterial(sf, [k, k]);
+  if (color) m.color.set(color);
+  return worldUV(m);
+}
 
 export class World {
   constructor(scene, quality = { shadows: true, level: 'high' }) {
@@ -133,7 +144,7 @@ export class World {
   buildFloors() {
     const s = this.scene;
     const SU = surfaces();
-    const yard = new THREE.Mesh(new THREE.PlaneGeometry(MAP.w + 40, MAP.h + 40), SF.surfaceMaterial(SU.dirt, [(MAP.w + 40) / 5, (MAP.h + 40) / 5]));
+    const yard = new THREE.Mesh(new THREE.PlaneGeometry(MAP.w + 40, MAP.h + 40), worldMat('gravel', '#8a8680'));
     yard.rotation.x = -Math.PI / 2;
     yard.position.set(MAP.w / 2, -0.03, MAP.h / 2);
     yard.receiveShadow = true;
@@ -142,24 +153,25 @@ export class World {
     for (const r of MAP.rooms) {
       const st = styleOf(r);
       const w = r.x1 - r.x0 + 1, h = r.y1 - r.y0 + 1;
-      const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, h), SF.surfaceMaterial(surf(st.floor), [w * st.rep, h * st.rep]));
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, h), worldMat(st.floor, st.floorTint));
       floor.rotation.x = -Math.PI / 2;
       floor.position.set(r.x0 + w / 2, 0, r.y0 + h / 2);
       floor.receiveShadow = true;
       s.add(floor);
       if (!st.ceil || r.outdoor) continue;
-      const ceil = new THREE.Mesh(new THREE.PlaneGeometry(w, h), SF.surfaceMaterial(surf(st.ceil), [w / 4, h / 4]));
+      const ceil = new THREE.Mesh(new THREE.PlaneGeometry(w, h), worldMat(st.ceil, st.ceilTint || '#9a968e'));
       ceil.rotation.x = Math.PI / 2;
       ceil.position.set(r.x0 + w / 2, WALL_HEIGHT, r.y0 + h / 2);
       ceil.receiveShadow = true;
       s.add(ceil);
     }
-    const conc = SF.surfaceMaterial(SU.concA, [0.25, 0.25]);
+    const conc = worldMat('concrete', '#7a766e');
+    conc.polygonOffset = true; conc.polygonOffsetFactor = -1; conc.polygonOffsetUnits = -1;
     for (const d of MAP.doors)
       for (const [x, y] of d.cells) {
         const f = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), conc);
         f.rotation.x = -Math.PI / 2;
-        f.position.set(x + 0.5, 0.001, y + 0.5);
+        f.position.set(x + 0.5, 0.004, y + 0.5);
         f.receiveShadow = true;
         s.add(f);
       }
@@ -224,9 +236,9 @@ export class World {
         }
         if (!visible) continue;
         const st = styleOf(MAP.rooms[zone]);
-        const key = zone < 0 ? 'stone' : st.wall;
+        const key = zone < 0 ? 'bricksB' : st.wall;
         if (!groups.has(key)) groups.set(key, []);
-        groups.get(key).push([x, y, zone < 0 ? '#9a9890' : st.tint, zone >= 0 && st.base]);
+        groups.get(key).push([x, y, zone < 0 ? '#8a8884' : st.tint, zone >= 0 && st.base ? `${st.base}|${st.baseTint || '#ffffff'}` : null]);
       }
 
     const geo = new THREE.BoxGeometry(1, WALL_HEIGHT, 1);
@@ -237,7 +249,7 @@ export class World {
     const c = new THREE.Color();
     const baseCells = [];
     for (const [key, cells] of groups) {
-      const mat = SF.surfaceMaterial(surf(key), [1, 1]);
+      const mat = worldMat(key);
       this.wallMats[key] = mat;
       const walls = new THREE.InstancedMesh(geo, mat, cells.length);
       walls.castShadow = walls.receiveShadow = true;
@@ -245,7 +257,7 @@ export class World {
         m.makeTranslation(x + 0.5, WALL_HEIGHT / 2, y + 0.5);
         walls.setMatrixAt(i, m);
         walls.setColorAt(i, c.set(tint));
-        if (base) baseCells.push([x, y, base === true ? 'plaster' : base]);
+        if (base) baseCells.push([x, y, base]);
       });
       this.scene.add(walls);
     }
@@ -257,8 +269,9 @@ export class World {
       const byKind = new Map();
       for (const c of baseCells) { if (!byKind.has(c[2])) byKind.set(c[2], []); byKind.get(c[2]).push(c); }
       for (const [kind, cells] of byKind) {
-        const base = new THREE.InstancedMesh(baseGeo, SF.surfaceMaterial(surf(kind), [1, 1]), cells.length);
-        const trim = new THREE.InstancedMesh(new THREE.BoxGeometry(1.06, 0.08, 1.06), new THREE.MeshStandardMaterial({ color: kind === 'plaster' ? '#2a1b10' : '#2a3430', roughness: 0.5 }), cells.length);
+        const [bkey, btint] = kind.split('|');
+        const base = new THREE.InstancedMesh(baseGeo, worldMat(bkey, btint), cells.length);
+        const trim = new THREE.InstancedMesh(new THREE.BoxGeometry(1.06, 0.08, 1.06), new THREE.MeshStandardMaterial({ color: bkey === 'woodOld' ? '#2a1b10' : '#2a3430', roughness: 0.5 }), cells.length);
         base.receiveShadow = true;
         cells.forEach(([x, y], i) => {
           m.makeTranslation(x + 0.5, 0.55, y + 0.5);
@@ -281,7 +294,7 @@ export class World {
 
   buildWindows() {
     this.windowGroups = [];
-    const plankMat = SF.surfaceMaterial(surfaces().planks, [1, 0.2]);
+    const plankMat = SF.surfaceMaterial(surf('planks'), [0.57, 0.085]);
     const frameMat = new THREE.MeshStandardMaterial({ color: '#3a2a1c', roughness: 0.6 });
     const bottomGeo = new THREE.BoxGeometry(1, WINDOW_SILL, 1);
     const topGeo = new THREE.BoxGeometry(1, WALL_HEIGHT - WINDOW_TOP, 1);
@@ -439,9 +452,9 @@ export class World {
           pos.x = r.x0 + w * fx + (i % 2 ? 1.5 : -1.5);
           if (cellAt(Math.floor(pos.x), Math.floor(pos.z)) !== T.FLOOR) pos.x = r.x0 + w * fx;
         }
-        const light = new THREE.PointLight(r.light, 0, r.outdoor ? 20 : 24, 1.15);
+        // lamps are data only; a small pool of real lights follows the nearest ones (see update)
+        const light = { position: new THREE.Vector3(), intensity: 0, distance: r.outdoor ? 20 : 24 };
         light.position.copy(pos).y -= 0.12;
-        this.scene.add(light);
         const bulbMat = new THREE.MeshStandardMaterial({ color: '#000', emissive, emissiveIntensity: 6 });
         let bulbMesh = new THREE.Mesh(bulbGeo, bulbMat);
         bulbMesh.position.copy(pos).y -= 0.12;
@@ -498,23 +511,28 @@ export class World {
         this.roomLights.push({ light, bulb: bulbMat, cone: coneMat, coneBase: coneOpacity, scale, base: 9 * scale, flicker: Math.random() < flickerChance, pos, color: new THREE.Color(r.light), shadowed: false });
       }
     }
-    // One shadow-casting light follows the player to the nearest lamp (keeps the light count constant).
-    this.shadowLight = null;
-    if (this.quality.shadows) {
-      const sl = new THREE.PointLight('#ffffff', 0, 24, 1.15);
-      sl.castShadow = true;
-      sl.shadow.mapSize.set(1024, 1024);
-      sl.shadow.bias = -0.004;
-      sl.shadow.normalBias = 0.02;
-      sl.shadow.camera.near = 0.2;
-      sl.shadow.camera.far = 24;
-      // the shadow casters are static, so only re-render the shadow map when something changes
-      sl.shadow.autoUpdate = false;
-      sl.shadow.needsUpdate = true;
-      this.scene.add(sl);
-      this.shadowLight = sl;
-      this.shadowOwner = null;
+    // A fixed pool of real point lights is handed to the lamps nearest the camera. The light count
+    // never changes (no shader recompiles) and stays small, which is what phones need most.
+    // Pool light 0 always takes the nearest lamp and is the only one that casts shadows.
+    this.pool = [];
+    const n = Math.min(this.quality.lights || 6, this.roomLights.length);
+    for (let i = 0; i < n; i++) {
+      const pl = new THREE.PointLight('#ffffff', 0, 24, 1.15);
+      if (i === 0 && this.quality.shadows) {
+        pl.castShadow = true;
+        pl.shadow.mapSize.set(1024, 1024);
+        pl.shadow.bias = -0.004;
+        pl.shadow.normalBias = 0.02;
+        pl.shadow.camera.near = 0.2;
+        pl.shadow.camera.far = 24;
+        // the shadow casters are static, so only re-render the shadow map when something changes
+        pl.shadow.autoUpdate = false;
+        pl.shadow.needsUpdate = true;
+      }
+      this.scene.add(pl);
+      this.pool.push({ light: pl, lamp: null, fade: 0 });
     }
+    this.shadowLight = this.quality.shadows && this.pool[0] ? this.pool[0].light : null;
     for (const l of this.roomLights) l.light.intensity = l.base;
   }
 
@@ -685,6 +703,32 @@ export class World {
     this.animate(1.0, (k) => { this.box.position.y = y0 * (1 - k * k); });
   }
 
+  assignPool(camPos) {
+    const ranked = [...this.roomLights].sort((a, b) => a.pos.distanceToSquared(camPos) - b.pos.distanceToSquared(camPos)).slice(0, this.pool.length);
+    const keep = new Set(ranked);
+    const owner = new Map();
+    for (const p of this.pool) if (p.lamp && keep.has(p.lamp)) owner.set(p.lamp, p);
+    const free = this.pool.filter((p) => !p.lamp || !keep.has(p.lamp));
+    const bind = (p, lamp, fadeIn) => {
+      p.lamp = lamp;
+      if (fadeIn) p.fade = 0;
+      p.light.position.copy(lamp.light.position);
+      p.light.color.copy(lamp.color);
+      p.light.distance = lamp.light.distance;
+    };
+    for (const lamp of ranked) if (!owner.has(lamp)) { const p = free.shift(); bind(p, lamp, true); owner.set(lamp, p); }
+    // the shadow caster always sits on the nearest lamp
+    if (this.shadowLight && ranked[0]) {
+      const p0 = this.pool[0], holder = owner.get(ranked[0]);
+      if (holder !== p0) {
+        const other = p0.lamp;
+        bind(p0, ranked[0], false);
+        if (other) bind(holder, other, false);
+        p0.light.shadow.needsUpdate = true;
+      }
+    }
+  }
+
   setPower(on, animate = true) {
     this.power = on;
     for (const m of this.powered) m.userData.setPower(on);
@@ -708,24 +752,11 @@ export class World {
 
   update(dt, papBusy, camPos) {
     this.time += dt;
-    if (this.shadowLight && camPos) {
-      this.shadowPick = (this.shadowPick || 0) - dt;
-      if (this.shadowPick <= 0) {
-        this.shadowPick = 0.4;
-        let best = null, bd = Infinity;
-        for (const l of this.roomLights) {
-          const d = l.pos.distanceToSquared(camPos);
-          if (d < bd) { bd = d; best = l; }
-        }
-        if (best !== this.shadowOwner) {
-          if (this.shadowOwner) { this.shadowOwner.shadowed = false; }
-          this.shadowOwner = best;
-          best.shadowed = true;
-          best.light.intensity = 0;
-          this.shadowLight.position.copy(best.light.position);
-          this.shadowLight.color.copy(best.color);
-          this.shadowLight.shadow.needsUpdate = true;
-        }
+    if (camPos && this.pool.length) {
+      this.poolPick = (this.poolPick || 0) - dt;
+      if (this.poolPick <= 0) {
+        this.poolPick = 0.3;
+        this.assignPool(camPos);
       }
     }
     if (this.rain) {
@@ -763,9 +794,12 @@ export class World {
     for (const l of this.roomLights) {
       const f = !l.flicker || this.power ? 1 : (Math.sin(this.time * 13 + l.pos.x) > 0.93 || Math.random() < 0.015 ? 0.12 : 1);
       const target = l.base * f;
-      if (l.shadowed && this.shadowLight) { this.shadowLight.intensity = target; l.light.intensity = 0; }
-      else l.light.intensity = target;
+      l.current = target;
       l.bulb.emissiveIntensity = 6 * f;
+    }
+    for (const p of this.pool) {
+      p.fade = Math.min(1, p.fade + dt * 3);
+      p.light.intensity = p.lamp ? (p.lamp.current ?? p.lamp.base) * p.fade : 0;
     }
     if (this.pap) this.pap.userData.update(dt, papBusy);
     const beam = this.box.userData.beam;

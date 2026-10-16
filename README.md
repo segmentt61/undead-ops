@@ -184,6 +184,15 @@ Safari starts on Medium. Resolution scales down automatically when the frame rat
   [Boss Battle #6 Metal by nene](https://opengameart.org/content/boss-battle-6-metal),
   [JRPG Epic Rock Battle Theme #1 by HydroGene](https://opengameart.org/content/jrpg-epic-rock-battle-theme-1)
 - Characters (survivors and zombies): [Animated Characters Survivors by Kenney](https://www.kenney.nl/assets/animated-characters-survivors)
+- Wall, floor and ceiling materials: [ambientCG](https://ambientcg.com) — Bricks097, Bricks094, Concrete012,
+  PaintedPlaster017, Tiles141, Tiles105, Tiles074, Tiles139, WoodFloor043, Planks039, CorrugatedSteel005,
+  OfficeCeiling001, Asphalt031, Ground110
+- Reflections HDRI: [Abandoned Factory Canteen 01 by Poly Haven](https://polyhaven.com/a/abandoned_factory_canteen_01)
+
+## Older looks
+
+The previous cartoon-style version is kept as the git tag `v1-cartoon-style` (and branch `cartoon-style`).
+To go back to it: `git checkout v1-cartoon-style`.
 
 ## Project layout
 

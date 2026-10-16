@@ -2,6 +2,7 @@
 // drawn with a single InstancedMesh, so a map full of props costs only a few draw calls.
 import * as THREE from 'three';
 import { build } from './characters.js';
+import { pbrSurface, worldUV } from './pbr.js';
 
 const propMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, metalness: 0.15 });
 const glowMats = {
@@ -334,7 +335,23 @@ const KINDS = {
   }),
 };
 
+// props are vertex-coloured; a photo-scanned concrete layer in world space adds grime and wear
+function grimeProps() {
+  if (propMat.userData.grime) return;
+  propMat.userData.grime = true;
+  const sf = pbrSurface('concrete');
+  propMat.map = sf.map;
+  propMat.normalMap = sf.normalMap;
+  propMat.normalScale = new THREE.Vector2(0.6, 0.6);
+  propMat.color.setScalar(1.7);
+  propMat.roughness = 0.82;
+  propMat.metalness = 0.08;
+  worldUV(propMat);
+  propMat.needsUpdate = true;
+}
+
 export function buildProps(scene, props) {
+  grimeProps();
   const groups = new Map();
   for (const p of props) {
     if (p.kind === 'crate') continue; // crates use the textured crate mesh in world.js

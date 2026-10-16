@@ -322,10 +322,24 @@ export function createGun(id, pap = false) {
       break;
     }
     case 'knife': {
-      box(g, 0.006, 0.035, 0.2, mat('#cfd4da'), 0, 0.0, -0.12);
-      box(g, 0.025, 0.035, 0.1, mat('#2a1d14'), 0, 0.0, 0.03);
-      box(g, 0.05, 0.05, 0.012, M.steel(), 0, 0.0, -0.02);
-      muzzle.set(0, 0, -0.22);
+      // combat knife: bevelled clip-point blade, steel guard, rubber grip with grooves
+      const sh = new THREE.Shape();
+      sh.moveTo(0, -0.013); sh.lineTo(0.15, -0.015); sh.quadraticCurveTo(0.192, -0.013, 0.208, 0.004);
+      sh.lineTo(0.172, 0.011); sh.lineTo(0.125, 0.014); sh.lineTo(0.06, 0.018); sh.lineTo(0, 0.018); sh.lineTo(0, -0.013);
+      const bg = new THREE.ExtrudeGeometry(sh, { depth: 0.0025, bevelEnabled: true, bevelThickness: 0.0016, bevelSize: 0.0014, bevelSegments: 2, curveSegments: 6 });
+      bg.translate(0, 0, -0.00125);
+      bg.rotateY(Math.PI / 2);
+      const blade = new THREE.Mesh(bg, new THREE.MeshStandardMaterial({ color: '#b9c0c8', metalness: 0.92, roughness: 0.26 }));
+      blade.position.set(0, 0, -0.024);
+      g.add(blade);
+      // fuller groove and a smear of blood near the tip
+      box(g, 0.0062, 0.004, 0.09, mat('#7e868e'), 0, 0.006, -0.09);
+      box(g, 0.0064, 0.012, 0.045, mat('#4a0606'), 0, -0.004, -0.19);
+      box(g, 0.012, 0.064, 0.01, M.steel(), 0, 0.002, -0.02);
+      box(g, 0.024, 0.032, 0.105, mat('#1d1a17'), 0, 0.0, 0.035);
+      for (let i = 0; i < 5; i++) box(g, 0.026, 0.004, 0.006, mat('#0e0c0a'), 0, 0.016, -0.005 + i * 0.018);
+      box(g, 0.027, 0.036, 0.012, M.steel(), 0, 0.0, 0.092);
+      muzzle.set(0, 0, -0.23);
       break;
     }
     default:
