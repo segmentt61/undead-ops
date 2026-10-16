@@ -171,7 +171,7 @@ Pause menu (Esc) → **Graphics**:
 Safari starts on Medium. Resolution scales down automatically when the frame rate drops
 (shown top-right as `% res`).
 
-## Credits (all CC0 / public domain)
+## Credits (CC0 / public domain, characters MIT)
 
 - Gun models: [Ultimate Gun Pack by Quaternius](https://opengameart.org/content/low-poly-guns-pack)
 - Gunshots: [The Free Firearm Sound Library](https://opengameart.org/content/the-free-firearm-sound-library)
@@ -183,7 +183,7 @@ Safari starts on Medium. Resolution scales down automatically when the frame rat
 - Rock/metal round music: [rocky musicloop by johndekale](https://opengameart.org/content/rocky-musicloop),
   [Boss Battle #6 Metal by nene](https://opengameart.org/content/boss-battle-6-metal),
   [JRPG Epic Rock Battle Theme #1 by HydroGene](https://opengameart.org/content/jrpg-epic-rock-battle-theme-1)
-- Characters (survivors and zombies): [Animated Characters Survivors by Kenney](https://www.kenney.nl/assets/animated-characters-survivors)
+- Characters (soldiers and zombies): [Microsoft Rocketbox Avatar Library](https://github.com/microsoft/Microsoft-Rocketbox) (MIT licence, see `public/assets/rb/LICENSE`) — Military_Male_01, Medical_Male_02, Police_Male_02, Construction_Male_01, Business_Male_02, Male_Adult_05, Female_Adult_03. Walking and running are animated procedurally in `public/js/rig.js`.
 - Wall, floor and ceiling materials: [ambientCG](https://ambientcg.com) — Bricks097, Bricks094, Concrete012,
   PaintedPlaster017, Tiles141, Tiles105, Tiles074, Tiles139, WoodFloor043, Planks039, CorrugatedSteel005,
   OfficeCeiling001, Asphalt031, Ground110

@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { MAP, T, MAP_LIST, setMap, cellAt } from '/shared/map.js';
 import { World } from './world.js';
-import { RigCharacter, loadRig, rigLoaded } from './rig.js';
+import { RigCharacter, loadRig, rigLoaded, zombieSkin } from './rig.js';
 
 const SHOT_TIME = 11;
 
@@ -54,7 +54,7 @@ export class MenuBackdrop {
   spawnZombies() {
     if (!rigLoaded() || this.disposed) return;
     for (let i = 0; i < 5; i++) {
-      const rig = new RigCharacter(i % 2 ? 'zombieA' : 'zombieC', { height: 1.7 + (i % 3) * 0.06 });
+      const rig = new RigCharacter(zombieSkin(i), { height: 1.7 + (i % 3) * 0.06 });
       this.scene.add(rig.root);
       this.zombies.push({ rig, x: 0, z: 0, speed: 0.55 + (i % 3) * 0.12, phase: i * 1.7, active: false });
     }

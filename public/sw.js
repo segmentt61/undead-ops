@@ -1,6 +1,6 @@
 // Service worker: caches the big, rarely-changing files (models, sounds, three.js) so the game
 // starts fast on phones. Pages and game code always come from the network first so updates show up.
-const CACHE = 'undead-ops-assets-v2';
+const CACHE = 'undead-ops-assets-v3';
 const CACHE_FIRST = ['/assets/', '/lib/', '/jsm/', '/icons/'];
 
 self.addEventListener('install', () => self.skipWaiting());

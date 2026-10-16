@@ -248,7 +248,7 @@ export class TouchControls {
   press(id, on) {
     const a = this.a;
     switch (id) {
-      case 'fire': this.fireHeld = on; a.trigger(on); break;
+      case 'fire': this.fireHeld = on; break; // the game decides when to shoot (see auto-fire)
       case 'ads': if (on) a.adsToggle(); break;
       case 'jump': this.jump = on; break;
       case 'crouch': if (on) this.crouch = !this.crouch; break;

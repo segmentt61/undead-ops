@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import * as MD from './models.js';
 import * as CH from './characters.js';
-import { RigCharacter, rigLoaded, raycastRig, limbChunk, LIMB_BITS, LIMB_BONE_NAMES } from './rig.js';
+import { RigCharacter, rigLoaded, raycastRig, limbChunk, LIMB_BITS, LIMB_BONE_NAMES, zombieSkin } from './rig.js';
 
 // gore level is read from the game settings ('extreme' | 'normal' | 'off')
 export const goreCfg = { level: 'extreme' };
@@ -118,7 +118,7 @@ export class Zombies {
     const root = new THREE.Group();
     let model, rig = null;
     if (type === 0 && rigLoaded()) {
-      rig = new RigCharacter(id % 2 ? 'zombieA' : 'zombieC', { height: 1.72 + ((id * 37) % 20) / 100 });
+      rig = new RigCharacter(zombieSkin(id), { height: 1.7 + ((id * 37) % 20) / 100 });
       model = rig.body;
       root.add(rig.root);
     } else {
@@ -528,15 +528,15 @@ export class RemotePlayers {
     const root = new THREE.Group();
     let model, rig = null, parts;
     if (rigLoaded()) {
-      rig = new RigCharacter('survivorMaleB', { height: 1.82 });
+      rig = new RigCharacter('soldier', { height: 1.82 });
       root.add(rig.root);
       model = rig.body;
       // the gun pivots at shoulder height with the player's look pitch
       const pivot = new THREE.Group();
-      pivot.position.set(0, 1.04, 0.1);
+      pivot.position.set(0, 1.4, 0.08);
       rig.body.add(pivot);
       const gunHolder = new THREE.Group();
-      gunHolder.position.set(0.1, 0.0, 0.3);
+      gunHolder.position.set(0.13, -0.04, 0.38);
       gunHolder.rotation.y = Math.PI;
       pivot.add(gunHolder);
       // coloured armband so teammates are easy to tell apart

@@ -1,15 +1,16 @@
 // Loads external assets (CC0 gun models by Quaternius, recorded sounds) and prepares them for the game.
 import * as THREE from 'three';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { objectUV, wearDetail, pbrSurface } from './pbr.js';
 
 // Physically based materials for the gun pack's material names.
 const PALETTE = {
-  Black:       { color: '#2a2c30', metalness: 0.55, roughness: 0.42 },
+  Black:       { color: '#232528', metalness: 0.6, roughness: 0.45 },
   Black2:      { color: '#1b1c1f', metalness: 0.4, roughness: 0.55 },
   DarkMetal:   { color: '#3e4044', metalness: 0.85, roughness: 0.32 },
   Metal:       { color: '#62666c', metalness: 0.9, roughness: 0.28 },
-  LightMetal:  { color: '#9a9ea6', metalness: 0.95, roughness: 0.22 },
-  LightMetal2: { color: '#c4c8ce', metalness: 1.0, roughness: 0.15 },
+  LightMetal:  { color: '#5e6268', metalness: 0.95, roughness: 0.36 },
+  LightMetal2: { color: '#686c72', metalness: 1.0, roughness: 0.34 },
   Grey:        { color: '#4f5357', metalness: 0.15, roughness: 0.6 },
   Wood:        { color: '#9b6a43', metalness: 0.0, roughness: 0.55 },
   DarkWood:    { color: '#6a4229', metalness: 0.0, roughness: 0.5 },
@@ -85,6 +86,37 @@ function cleanGeometry(geo) {
   return out;
 }
 
+// Gives a prepared gun its own materials with worn-metal detail (or real wood grain) mapped in
+// the gun's own space; `s` converts model units to metres.
+function texturise(obj, s) {
+  const wear = wearDetail();
+  const wood = pbrSurface('woodOld');
+  const cache = new Map();
+  obj.traverse((o) => {
+    if (!o.isMesh) return;
+    const conv = (m) => {
+      if (cache.has(m)) return cache.get(m);
+      const part = m.userData.gunPart;
+      if (part === 'Glass') { cache.set(m, m); return m; }
+      const c = m.clone();
+      c.userData.gunPart = part;
+      if (part === 'Wood' || part === 'DarkWood') {
+        c.map = wood.map; c.normalMap = wood.normalMap; c.roughness = 0.6;
+        c.color.multiplyScalar(1.6);
+        objectUV(c, s / 0.35);
+      } else {
+        c.normalMap = wear.normalMap; c.roughnessMap = wear.roughnessMap;
+        c.normalScale = new THREE.Vector2(0.45, 0.45);
+        c.roughness = Math.min(1, c.roughness * 1.25);
+        objectUV(c, s / 0.09);
+      }
+      cache.set(m, c);
+      return c;
+    };
+    o.material = Array.isArray(o.material) ? o.material.map(conv) : conv(o.material);
+  });
+}
+
 function prepare(obj, def) {
   obj.traverse((o) => {
     if (!o.isMesh) return;
@@ -103,6 +135,7 @@ function prepare(obj, def) {
   const size = box.getSize(new THREE.Vector3());
   const s = def.len / size.z;
   obj.scale.setScalar(s);
+  texturise(obj, s);
   holder.updateMatrixWorld(true);
   box = new THREE.Box3().setFromObject(holder);
   // origin: grip point along the gun, top of the gun slightly above origin

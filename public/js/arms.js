@@ -2,6 +2,7 @@
 // Hands are placed on each gun's grip / handguard every frame and the elbows are solved with
 // analytic two-bone IK, so the arms follow recoil, sway and reload animations.
 import * as THREE from 'three';
+import { wearDetail } from './pbr.js';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
@@ -70,7 +71,8 @@ export class FpArms {
     this.root.traverse((o) => {
       if (o.isBone) { this.bones[o.name] = o; o.userData.rest = o.rotation.clone(); o.userData.restQ = o.quaternion.clone(); }
       if (o.isMesh) {
-        o.material = new THREE.MeshStandardMaterial({ map: skinTex, roughness: 0.62, metalness: 0 });
+        // tactical gloves: the skin texture's shading under a dark fabric tint, with fabric wear
+        o.material = new THREE.MeshStandardMaterial({ map: skinTex, color: '#4a4a44', roughness: 0.88, metalness: 0, normalMap: wearDetail().normalMap, normalScale: new THREE.Vector2(0.6, 0.6) });
         o.frustumCulled = false;
       }
     });
@@ -86,7 +88,7 @@ export class FpArms {
   }
 
   addSleeves() {
-    const cloth = new THREE.MeshStandardMaterial({ color: '#3b4330', roughness: 0.92 });
+    const cloth = new THREE.MeshStandardMaterial({ color: '#4a5038', roughness: 0.95, normalMap: wearDetail().normalMap, normalScale: new THREE.Vector2(1, 1) });
     const cuffMat = new THREE.MeshStandardMaterial({ color: '#30372a', roughness: 0.95 });
     for (const side of ['R', 'L']) {
       const upper = this.bones[`upper_arm${side}`], fore = this.bones[`forearm${side}`];

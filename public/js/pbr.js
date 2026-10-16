@@ -91,3 +91,82 @@ export function loadEnvironment(renderer, onReady) {
     onReady(envTex);
   });
 }
+
+/**
+ * Like worldUV, but in the object's own space (for things that move, like the weapon you hold).
+ * `scale` converts the mesh's geometry units into texture repeats.
+ */
+export function objectUV(mat, scale) {
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uObjUV = { value: scale };
+    sh.vertexShader = 'uniform float uObjUV;\n' + sh.vertexShader.replace('#include <fog_vertex>', `#include <fog_vertex>
+      vec3 ouvN = abs( normalize( objectNormal ) );
+      vec2 ouv = ( ouvN.y > 0.5 ? transformed.xz : ( ouvN.x > 0.5 ? transformed.zy : transformed.xy ) ) * uObjUV;
+      #ifdef USE_MAP
+        vMapUv = ( mapTransform * vec3( ouv, 1.0 ) ).xy;
+      #endif
+      #ifdef USE_NORMALMAP
+        vNormalMapUv = ( normalMapTransform * vec3( ouv, 1.0 ) ).xy;
+      #endif
+      #ifdef USE_ROUGHNESSMAP
+        vRoughnessMapUv = ( roughnessMapTransform * vec3( ouv, 1.0 ) ).xy;
+      #endif`);
+  };
+  mat.customProgramCacheKey = () => 'objectUV';
+  return mat;
+}
+
+let detail = null;
+/** Worn metal / polymer detail: fine scratches and micro-noise as a normal map plus a roughness map. */
+export function wearDetail() {
+  if (detail) return detail;
+  const S = 512;
+  const h = document.createElement('canvas'); h.width = h.height = S;
+  const hx = h.getContext('2d');
+  hx.fillStyle = '#808080'; hx.fillRect(0, 0, S, S);
+  const r = document.createElement('canvas'); r.width = r.height = S;
+  const rx = r.getContext('2d');
+  rx.fillStyle = '#8c8c8c'; rx.fillRect(0, 0, S, S);
+  let seed = 11;
+  const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+  // micro noise
+  const img = hx.getImageData(0, 0, S, S), rimg = rx.getImageData(0, 0, S, S);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const n = (rnd() - 0.5) * 22;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = 128 + n;
+    const rn = 140 + (rnd() - 0.5) * 40;
+    rimg.data[i] = rimg.data[i + 1] = rimg.data[i + 2] = rn;
+  }
+  hx.putImageData(img, 0, 0); rx.putImageData(rimg, 0, 0);
+  // scratches: grooves in the height map, shinier (lower roughness) lines in the roughness map
+  for (let i = 0; i < 260; i++) {
+    const x0 = rnd() * S, y0 = rnd() * S, a = rnd() * Math.PI, len = 10 + rnd() * 70;
+    const x1 = x0 + Math.cos(a) * len, y1 = y0 + Math.sin(a) * len;
+    hx.strokeStyle = `rgba(40,40,40,${0.3 + rnd() * 0.4})`; hx.lineWidth = 0.6 + rnd();
+    hx.beginPath(); hx.moveTo(x0, y0); hx.lineTo(x1, y1); hx.stroke();
+    rx.strokeStyle = `rgba(60,60,60,${0.4 + rnd() * 0.4})`; rx.lineWidth = 0.8 + rnd();
+    rx.beginPath(); rx.moveTo(x0, y0); rx.lineTo(x1, y1); rx.stroke();
+  }
+  // smudges and grime patches (rougher)
+  for (let i = 0; i < 40; i++) {
+    const x = rnd() * S, y = rnd() * S, rr = 10 + rnd() * 50;
+    const g = rx.createRadialGradient(x, y, 0, x, y, rr);
+    g.addColorStop(0, `rgba(230,230,230,${0.25 + rnd() * 0.3})`); g.addColorStop(1, 'rgba(230,230,230,0)');
+    rx.fillStyle = g; rx.fillRect(x - rr, y - rr, rr * 2, rr * 2);
+  }
+  // height -> normal
+  const src = hx.getImageData(0, 0, S, S).data;
+  const nc = document.createElement('canvas'); nc.width = nc.height = S;
+  const nx = nc.getContext('2d'); const out = nx.createImageData(S, S);
+  const H = (x, y) => src[(((y + S) % S) * S + ((x + S) % S)) * 4] / 255;
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const dx = (H(x + 1, y) - H(x - 1, y)) * 2.2, dy = (H(x, y + 1) - H(x, y - 1)) * 2.2;
+    const l = Math.hypot(dx, dy, 1), k = (y * S + x) * 4;
+    out.data[k] = (-dx / l * 0.5 + 0.5) * 255; out.data[k + 1] = (dy / l * 0.5 + 0.5) * 255; out.data[k + 2] = (1 / l * 0.5 + 0.5) * 255; out.data[k + 3] = 255;
+  }
+  nx.putImageData(out, 0, 0);
+  const tn = new THREE.CanvasTexture(nc), tr = new THREE.CanvasTexture(r);
+  for (const t of [tn, tr]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; }
+  detail = { normalMap: tn, roughnessMap: tr };
+  return detail;
+}

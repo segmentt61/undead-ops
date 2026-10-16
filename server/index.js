@@ -1,6 +1,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { Room } from './room.js';
@@ -11,7 +12,12 @@ const PORT = Number(process.env.PORT) || 3000;
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.obj': 'text/plain; charset=utf-8', '.m4a': 'audio/mp4', '.ogg': 'audio/ogg', '.wav': 'audio/wav', '.glb': 'model/gltf-binary', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon',
+  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.fbx': 'application/octet-stream', '.hdr': 'application/octet-stream',
 };
+
+// text and model files shrink a lot with gzip (the character FBX files by ~60%); kept in memory once compressed
+const GZIP = new Set(['.html', '.js', '.css', '.json', '.webmanifest', '.obj', '.fbx', '.hdr', '.svg']);
+const gzCache = new Map();
 
 // URL prefix -> directory on disk
 const MOUNTS = [
@@ -31,7 +37,16 @@ function serveStatic(req, res) {
     if (!file.startsWith(dir + path.sep)) break;
     fs.stat(file, (err, st) => {
       if (err || !st.isFile()) { res.writeHead(404, { 'Content-Type': 'text/plain' }).end('Not found'); return; }
-      res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': urlPath.startsWith('/assets/') || urlPath.startsWith('/lib/') ? 'public, max-age=3600' : 'no-cache' });
+      const ext = path.extname(file);
+      const headers = { 'Content-Type': MIME[ext] || 'application/octet-stream', 'Cache-Control': urlPath.startsWith('/assets/') || urlPath.startsWith('/lib/') ? 'public, max-age=3600' : 'no-cache', Vary: 'Accept-Encoding' };
+      if (GZIP.has(ext) && /\bgzip\b/.test(req.headers['accept-encoding'] || '')) {
+        const key = `${file}|${st.mtimeMs}`;
+        let gz = gzCache.get(key);
+        if (!gz) { gz = zlib.gzipSync(fs.readFileSync(file), { level: 6 }); gzCache.set(key, gz); }
+        res.writeHead(200, { ...headers, 'Content-Encoding': 'gzip', 'Content-Length': gz.length }).end(gz);
+        return;
+      }
+      res.writeHead(200, headers);
       fs.createReadStream(file).pipe(res);
     });
     return;

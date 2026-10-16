@@ -1,0 +1,145 @@
+{
+ "Business_Male_02": {
+  "fbx": "Business_Male_02.fbx",
+  "mats": {
+   "m008_opacity": {
+    "c": "m008_opacity_color.png"
+   },
+   "m008_head": {
+    "n": "m008_head_normal.jpg",
+    "c": "m008_head_color.jpg"
+   },
+   "m008_body": {
+    "c": "m008_body_color.jpg",
+    "n": "m008_body_normal.jpg"
+   }
+  }
+ },
+ "Construction_Male_01": {
+  "fbx": "Construction_Male_01.fbx",
+  "mats": {
+   "m111_helmet": {
+    "c": "m111_helmet_color.jpg",
+    "n": "m111_helmet_normal.jpg"
+   },
+   "m111_opacity": {
+    "c": "m111_opacity_color.png",
+    "n": "m111_opacity_normal.png"
+   },
+   "m111_head": {
+    "n": "m111_head_normal.jpg",
+    "c": "m111_head_color.jpg"
+   },
+   "m111_body": {
+    "c": "m111_body_color.jpg",
+    "n": "m111_body_normal.jpg"
+   },
+   "m111_tools": {
+    "n": "m111_tools_normal.jpg",
+    "c": "m111_tools_color.jpg"
+   }
+  }
+ },
+ "Female_Adult_03": {
+  "fbx": "Female_Adult_03.fbx",
+  "mats": {
+   "f003_head": {
+    "c": "f003_head_color.jpg",
+    "n": "f003_head_normal.jpg"
+   },
+   "f003_body": {
+    "n": "f003_body_normal.jpg",
+    "c": "f003_body_color.jpg"
+   },
+   "f003_opacity": {
+    "c": "f003_opacity_color.png"
+   }
+  }
+ },
+ "Male_Adult_05": {
+  "fbx": "Male_Adult_05.fbx",
+  "mats": {
+   "m009_opacity": {
+    "c": "m009_opacity_color.png"
+   },
+   "m009_head": {
+    "n": "m009_head_normal.jpg",
+    "c": "m009_head_color.jpg"
+   },
+   "m009_body": {
+    "c": "m009_body_color.jpg",
+    "n": "m009_body_normal.jpg"
+   }
+  }
+ },
+ "Medical_Male_02": {
+  "fbx": "Medical_Male_02.fbx",
+  "mats": {
+   "m154_head": {
+    "c": "m154_head_color.jpg",
+    "n": "m154_head_normal.jpg"
+   },
+   "m154_body": {
+    "n": "m154_body_normal.jpg",
+    "c": "m154_body_color_blue.jpg"
+   },
+   "m154_opacity": {
+    "c": "m154_opacity_color.png"
+   }
+  }
+ },
+ "Military_Male_01": {
+  "fbx": "Military_Male_01.fbx",
+  "mats": {
+   "sm002_body": {
+    "c": "sm002_body_color_acu.jpg",
+    "n": "sm002_body_normal.jpg"
+   },
+   "sm002_combat_knife": {
+    "n": "sm002_combat_knife_normal.jpg",
+    "c": "sm002_combat_knife_color.jpg"
+   },
+   "sm002_helmet": {
+    "c": "sm002_helmet_color_acu.jpg",
+    "n": "sm002_helmet_normal.jpg"
+   },
+   "sm002_head": {
+    "n": "sm002_head_normal.jpg",
+    "c": "sm002_head_color.jpg"
+   },
+   "sm002_equipment": {
+    "c": "sm002_equipment_color_acu.jpg",
+    "n": "sm002_equipment_normal.jpg"
+   }
+  }
+ },
+ "Police_Male_02": {
+  "fbx": "Police_Male_02.fbx",
+  "mats": {
+   "m158_pistol": {
+    "n": "m158_pistol_normal.jpg",
+    "c": "m158_pistol_color.jpg"
+   },
+   "m158_head": {
+    "c": "m158_head_color.jpg",
+    "n": "m158_head_normal.jpg"
+   },
+   "m158_equipment": {
+    "n": "m158_equipment_normal.jpg",
+    "c": "m158_equipment_color.jpg"
+   },
+   "m158_opacity": {
+    "n": "m158_opacity_normal.png",
+    "c": "m158_opacity_color.png"
+   },
+   "m158_helmet": {
+    "n": "m158_helmet_normal.jpg",
+    "c": "m158_helmet_color.jpg"
+   },
+   "m158_body": {
+    "c": "m158_body_color.jpg",
+    "n": "m158_body_normal.jpg"
+   }
+  }
+ }
+}

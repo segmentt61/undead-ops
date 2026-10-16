@@ -13,7 +13,7 @@ import { audio } from './audio.js';
 import { PostFX, QUALITY } from './post.js';
 import { loadGunModels } from './assets.js';
 import { loadArms } from './arms.js';
-import { loadRig } from './rig.js';
+import { loadRig, setRigLowRes } from './rig.js';
 import { GamepadControls, TouchControls, isTouchDevice } from './controls.js';
 import { MenuBackdrop } from './menu3d.js';
 import { preloadAll, setLowRes, loadEnvironment } from './pbr.js';
@@ -50,6 +50,7 @@ const post = new PostFX(renderer, quality);
 let envMap = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
 // phones get the 512 px textures
 setLowRes(quality === QUALITY.low);
+setRigLowRes(quality === QUALITY.low);
 const texturesReady = preloadAll();
 // swap the stand-in reflections for the real HDRI once it is in
 loadEnvironment(renderer, (tex) => {
@@ -58,7 +59,10 @@ loadEnvironment(renderer, (tex) => {
   if (game.weapons) game.weapons.viewScene.environment = tex;
 });
 $('game').appendChild(renderer.domElement);
-const camera = new THREE.PerspectiveCamera(settings.fov, window.innerWidth / window.innerHeight, 0.1, 200);
+// The FOV setting is horizontal at 16:9 (like most shooters); three.js wants the vertical angle.
+// Wider screens (phones) then see more to the sides instead of getting a stretched fisheye view.
+const vfov = (h) => (2 * Math.atan(Math.tan((h * Math.PI) / 360) / (16 / 9)) * 180) / Math.PI;
+const camera = new THREE.PerspectiveCamera(vfov(settings.fov), window.innerWidth / window.innerHeight, 0.1, 200);
 
 const game = {
   renderer, camera, scene: null, world: null, fx: null, zombies: null, remotes: null, powerups: null, player: null, weapons: null,
@@ -118,7 +122,7 @@ function buildScene(ws) {
     game.weapons = new Weapons(game);
     game.weapons.setAspect(window.innerWidth / window.innerHeight);
     game.weapons.viewScene.environment = envMap;
-    game.weapons.viewScene.environmentIntensity = 0.55;
+    game.weapons.viewScene.environmentIntensity = 0.38;
   }
   post.setup(scene, camera, game.weapons.viewScene, game.weapons.viewCam);
   const w = game.world;
@@ -399,7 +403,7 @@ async function enterMenuBackdrop() {
   if (game.state !== 'menu') return;
   if (!menuBg) { menuBg = new MenuBackdrop(camera, quality); menuBg.scene.environment = envMap; menuBg.scene.environmentIntensity = 0.3; }
   else setMap(menuBg.mapId);
-  camera.fov = 62; camera.updateProjectionMatrix();
+  camera.fov = 50; camera.updateProjectionMatrix();
   post.setup(menuBg.scene, camera, menuBg.viewScene, menuViewCam);
 }
 // build it right after the menu has painted, so the page shows up instantly
@@ -1096,9 +1100,10 @@ function step(dt) {
       p.look(touchState.lookPx[0] * k / 0.0022, (settings.invertY ? -touchState.lookPx[1] : touchState.lookPx[1]) * k / 0.0022, 1);
       w.lookDX += touchState.lookPx[0]; w.lookDY += touchState.lookPx[1];
       // auto-fire: shoot while the crosshair rests on a zombie that is in range and in sight
-      // and holding FIRE always fires continuously too, whatever the gun (semi-autos get a fresh pull each frame)
-      const auto = settings.autoFire && autoTarget();
-      const want = auto || touchState.fireHeld;
+      // with auto-fire on, the gun only ever shoots while the crosshair is on a zombie (FIRE button or not);
+      // with it off, the FIRE button is a normal trigger
+      const onTarget = autoTarget();
+      const want = settings.autoFire ? onTarget : touchState.fireHeld;
       if (want) { actions.trigger(false); actions.trigger(true); }
       else if (autoFiring) actions.trigger(false);
       autoFiring = want;
@@ -1152,7 +1157,7 @@ function step(dt) {
     else if (s && s.mag === 0 && s.reserve === 0) hud.reloadHint('NO AMMO');
     else if (w.state === 'reload') hud.reloadHint('');
     else hud.reloadHint('');
-    const fovNow = settings.fov * w.fovMult();
+    const fovNow = vfov(settings.fov) * w.fovMult();
     if (Math.abs(camera.fov - fovNow) > 0.01) { camera.fov = fovNow; camera.updateProjectionMatrix(); }
     const gap = Math.tan(w.spreadDeg() * Math.PI / 180) / Math.tan(camera.fov * Math.PI / 360) * (window.innerHeight / 2) + 6;
     hud.crosshair(gap, w.adsT < 0.4 && !p.sprinting && !!s && w.state !== 'reload');

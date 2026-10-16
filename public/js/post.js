@@ -29,7 +29,7 @@ class OverlayPass extends Pass {
 export const QUALITY = {
   high:   { label: 'High',   lights: 6, pixelRatio: 1.5, shadows: true,  ao: true,  bloom: true,  msaa: 4, post: true },
   medium: { label: 'Medium', lights: 5, pixelRatio: 1.25, shadows: false, ao: false, bloom: true,  msaa: 2, post: true },
-  low:    { label: 'Low',    lights: 3, pixelRatio: 1.25,   shadows: false, ao: false, bloom: false, msaa: 0, post: false },
+  low:    { label: 'Low',    lights: 3, pixelRatio: 1.25, shadows: false, ao: false, bloom: false, msaa: 2, post: true },
 };
 
 const GradeShader = {
@@ -40,13 +40,16 @@ const GradeShader = {
     hurt: { value: 0 },
     vignette: { value: 0.55 },
     grain: { value: 0.025 },
+    texel: { value: new THREE.Vector2(1 / 1280, 1 / 720) },
+    sharpen: { value: 0.35 },
   },
   vertexShader: /* glsl */`
     varying vec2 vUv;
     void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */`
     uniform sampler2D tDiffuse;
-    uniform float time, desat, hurt, vignette, grain;
+    uniform float time, desat, hurt, vignette, grain, sharpen;
+    uniform vec2 texel;
     varying vec2 vUv;
     float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
     void main() {
@@ -57,6 +60,10 @@ const GradeShader = {
       col.r = texture2D(tDiffuse, vUv + c * ca).r;
       col.g = texture2D(tDiffuse, vUv).g;
       col.b = texture2D(tDiffuse, vUv - c * ca).b;
+      // light sharpening (unsharp mask) so textures read crisp, like modern TAA-sharpened games
+      vec3 nb = texture2D(tDiffuse, vUv + vec2(texel.x, 0.0)).rgb + texture2D(tDiffuse, vUv - vec2(texel.x, 0.0)).rgb
+              + texture2D(tDiffuse, vUv + vec2(0.0, texel.y)).rgb + texture2D(tDiffuse, vUv - vec2(0.0, texel.y)).rgb;
+      col += (col - nb * 0.25) * sharpen;
       float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
       // warm highlights, cool teal shadows
       col *= mix(vec3(0.93, 1.0, 1.08), vec3(1.07, 1.0, 0.9), smoothstep(0.05, 0.8, l));
@@ -152,6 +159,7 @@ export class PostFX {
       composer.addPass(this.bloom);
     }
     this.grade = new ShaderPass(GradeShader);
+    this.updateTexel();
     composer.addPass(this.grade);
     composer.addPass(new OutputPass());
     this.composer = composer;
@@ -161,6 +169,13 @@ export class PostFX {
     if (!this.composer) return;
     if (pr) this.composer.setPixelRatio(pr);
     this.composer.setSize(w, h);
+    this.updateTexel();
+  }
+
+  updateTexel() {
+    if (!this.grade) return;
+    const sz = this.renderer.getDrawingBufferSize(new THREE.Vector2());
+    this.grade.uniforms.texel.value.set(1 / sz.x, 1 / sz.y);
   }
 
   render(dt, showViewmodel, { desat = 0, hurt = 0 } = {}) {
