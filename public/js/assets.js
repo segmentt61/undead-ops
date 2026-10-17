@@ -43,12 +43,12 @@ export const GUN_DEFS = {
   m14:      { file: 'AssaultRifle_2', len: 1.02, grip: 0.36 },
   mp40:     { file: 'SubmachineGun_1', len: 0.5, grip: 0.3 },
   mpl:      { file: 'SubmachineGun_4', len: 0.46, grip: 0.3 },
-  ak74u:    { file: 'AssaultRifle_1', len: 0.55, grip: 0.18 },
+  ak74u:    { file: 'AssaultRifle_1', glb: 'ak', dir: 'guns', keep: ['AK'], len: 0.86, grip: 0.36 },
   m16:      { file: 'AssaultRifle2_1', len: 0.98, grip: 0.38 },
   galil:    { file: 'AssaultRifle_4', len: 0.98, grip: 0.36 },
   commando: { file: 'AssaultRifle2_4', len: 0.74, grip: 0.4 },
   hk21:     { file: 'AssaultRifle_5', len: 1.05, grip: 0.36 },
-  dragunov: { file: 'SniperRifle_6', len: 1.22, grip: 0.33 },
+  dragunov: { file: 'SniperRifle_6', glb: 'bolt_rifle', dir: 'guns', len: 1.18, grip: 0.36 },
   knife:    { file: 'Bayonet', len: 0.3, grip: 0.2 },
 };
 
@@ -162,9 +162,20 @@ function cropP38(obj) {
 
 function prepare(obj, def) {
   if (def.crop === 'p38') cropP38(obj);
+  if (def.keep) {
+    // drop the display extras that ship with the model (loose rounds, ammo boxes…)
+    const drop = [];
+    obj.traverse((o) => { if (o.isMesh && !def.keep.includes(o.name)) drop.push(o); });
+    for (const o of drop) o.parent.remove(o);
+  }
   obj.traverse((o) => {
     if (!o.isMesh) return;
-    if (def.glb) { o.castShadow = true; return; } // scanned models are clean and keep their own PBR textures
+    if (def.glb) {
+      // scanned models are clean and keep their own PBR textures (the AK's varnish is toned down a bit)
+      o.castShadow = true;
+      if (def.glb === 'ak' && !o.material.userData.toned) { o.material = o.material.clone(); o.material.color.multiplyScalar(0.62); o.material.userData.toned = true; }
+      return;
+    }
     o.geometry = cleanGeometry(o.geometry);
     const mats = Array.isArray(o.material) ? o.material : [o.material];
     const repl = mats.map((m) => material(m.name));
@@ -223,7 +234,7 @@ export async function loadGunModels(onProgress) {
         if (def.glb) {
           const gl = new GLTFLoader();
           gl.setMeshoptDecoder(MeshoptDecoder);
-          src = gl.loadAsync(`/assets/props/${def.glb}.glb`).then((g) => g.scene);
+          src = gl.loadAsync(`/assets/${def.dir || 'props'}/${def.glb}.glb`).then((g) => g.scene);
         } else src = loader.loadAsync(`/assets/guns/${def.file}.obj`);
         cacheByFile.set(key, src);
       }

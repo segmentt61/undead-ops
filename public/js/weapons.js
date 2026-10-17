@@ -15,9 +15,10 @@ import { PERKS } from '/shared/config.js';
 import * as MD from './models.js';
 import * as CH from './characters.js';
 import { FpArms, armsLoaded } from './arms.js';
+import { SoldierArms, fpArmsReady } from './fparms.js';
 import { audio } from './audio.js';
 
-const HIP = new THREE.Vector3(0.14, -0.16, -0.46);
+const HIP = new THREE.Vector3(0.13, -0.125, -0.42);
 const PISTOLS = ['m1911', 'python', 'ray_gun'];
 const r1 = (v) => Math.round(v * 10) / 10;
 const r2 = (v) => Math.round(v * 100) / 100;
@@ -81,7 +82,7 @@ export class Weapons {
     this.viewScene.add(this.vFlash);
     this.holder = new THREE.Group();
     this.viewScene.add(this.holder);
-    this.arms = armsLoaded() ? new FpArms() : null;
+    this.arms = fpArmsReady() ? new SoldierArms() : armsLoaded() ? new FpArms() : null;
     if (this.arms) this.viewScene.add(this.arms.root);
     this.knifeVM = buildViewModel('knife', false);
     this.knifeVM.root.visible = false;
@@ -198,7 +199,7 @@ export class Weapons {
     if (s) {
       this.vm = buildViewModel(s.id, s.pap);
       this.holder.add(this.vm.root);
-      if (this.arms) this.arms.setWeapon(PISTOLS.includes(s.id), Math.min(-0.14, this.vm.muzzle.z * 0.42));
+      if (this.arms) this.arms.setWeapon(PISTOLS.includes(s.id), Math.max(-0.26, Math.min(-0.12, this.vm.muzzle.z * 0.36)));
     }
   }
 
@@ -590,7 +591,7 @@ export class Weapons {
     const h = this.holder;
     const bob = p.bobAmt * (1 - e * 0.85);
     const sightY = this.vm ? this.vm.top - 0.012 : 0.07;
-    const ads = new THREE.Vector3(0, -sightY, -0.5);
+    const ads = new THREE.Vector3(0, -sightY, -0.44);
     const vfov = 60 - 16 * e;
     if (Math.abs(this.viewCam.fov - vfov) > 0.01) { this.viewCam.fov = vfov; this.viewCam.updateProjectionMatrix(); }
     h.position.lerpVectors(HIP, ads, e);

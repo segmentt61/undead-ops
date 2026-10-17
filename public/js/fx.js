@@ -12,7 +12,8 @@ export class FX {
   constructor(scene) {
     this.scene = scene;
     this.particles = [];
-    const geo = new THREE.BoxGeometry(1, 1, 1);
+    // round droplets, not cubes
+    const geo = new THREE.IcosahedronGeometry(0.55, 1);
     this.pMesh = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ color: '#ffffff' }), MAX_PARTICLES);
     this.pMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.pMesh.setColorAt(0, new THREE.Color());
@@ -147,7 +148,17 @@ export class FX {
   }
 
   gib(pos) {
-    this.burst(pos, 26, { speed: 5.5, colors: ['#8a0a0a', '#b31212', '#5a0505', '#6a0808', '#9aa8ac', '#d8d0c0'], size: 0.09, life: 1.1, gravity: 14, spread: 1.4 });
+    this.burst(pos, 30, { speed: 5.5, colors: ['#8a0a0a', '#b31212', '#5a0505', '#6a0808'], size: 0.06, life: 1.1, gravity: 14, spread: 1.4 });
+    // a few wet lumps of flesh that bounce and leave trails
+    if (!this.meatMat) {
+      this.meatMat = new THREE.MeshStandardMaterial({ color: '#5a0a08', roughness: 0.28, metalness: 0.05 });
+      this.meatGeo = new THREE.SphereGeometry(1, 10, 8);
+    }
+    for (let i = 0; i < 4; i++) {
+      const m = new THREE.Mesh(this.meatGeo, this.meatMat);
+      m.scale.set(0.04 + Math.random() * 0.04, 0.03 + Math.random() * 0.03, 0.05 + Math.random() * 0.04);
+      this.chunk(m, pos.clone(), new THREE.Vector3((Math.random() - 0.5) * 6, 2 + Math.random() * 4, (Math.random() - 0.5) * 6));
+    }
   }
 
   sparks(pos, normal) {

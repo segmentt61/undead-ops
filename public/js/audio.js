@@ -18,9 +18,10 @@ registerSounds({
 });
 // Round music is streamed in one track at a time (decoded songs are big, phones have little memory).
 // Heavy metal from round one, getting heavier as the rounds climb; dog rounds get their own track.
-const MUSIC = Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8].map((i) => [`rock${i}`, `/assets/sfx/rock${i}.m4a`]));
-const ROCK = ['rock4', 'rock7', 'rock5', 'rock8', 'rock3', 'rock1'];
-const DOG_TRACK = 'rock6';
+const MUSIC = Object.fromEntries(Array.from({ length: 14 }, (_, i) => [`rock${i + 1}`, `/assets/sfx/rock${i + 1}.m4a`]));
+// industrial metal first (Doom spirit), then the faster metal tracks
+const ROCK = ['rock9', 'rock13', 'rock10', 'rock4', 'rock11', 'rock12', 'rock7', 'rock14', 'rock5', 'rock8'];
+const DOG_TRACK = 'rock12';
 
 const SYNTH_KIND = {
   pistol: 'pistol', pistol2: 'pistol', magnum: 'magnum', shotgun_double: 'shotgun', shotgun_pump: 'shotgun', shotgun_semi: 'shotgun',
@@ -620,7 +621,7 @@ class AudioEngine {
         this.combatSrc = src;
         this.combatKey = key;
       }
-      this.combatGain.gain.setTargetAtTime(1.7, t, 0.6);
+      this.combatGain.gain.setTargetAtTime(2.1, t, 0.5);
       this.calmGain.gain.setTargetAtTime(0.15, t, 0.8);
     } else {
       this.combatGain.gain.setTargetAtTime(mode === 'off' ? 0 : 0, t, 1.5);

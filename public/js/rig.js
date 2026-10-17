@@ -129,7 +129,7 @@ export function loadRig() {
 }
 
 // ------------------------------------------------------------------ IK helpers
-function rotateBoneTo(bone, from, to) {
+export function rotateBoneTo(bone, from, to) {
   const delta = new THREE.Quaternion().setFromUnitVectors(from, to);
   const wq = bone.getWorldQuaternion(new THREE.Quaternion());
   const pq = bone.parent.getWorldQuaternion(new THREE.Quaternion());
@@ -138,7 +138,7 @@ function rotateBoneTo(bone, from, to) {
 }
 
 /** Two-bone IK: bend upper/fore so the wrist reaches `target` (world), elbow towards `pole` (world dir). */
-function solveArm(upper, fore, hand, target, pole) {
+export function solveArm(upper, fore, hand, target, pole) {
   upper.updateMatrixWorld(true);
   const S = upper.getWorldPosition(V()), E = fore.getWorldPosition(V()), W = hand.getWorldPosition(V());
   const a = S.distanceTo(E), b = E.distanceTo(W);
@@ -447,12 +447,14 @@ export function limbChunk(skinKey, kind) {
       { s: [0.05, 0.06, 0.05], c: bone, p: [0, 0.04, 0] },
     ];
   }
+  // rounded, limb-like pieces (capsules) instead of boxes
+  for (const it of items) if (it.k === 'r') it.r = Math.min(it.s[0], it.s[1], it.s[2]) * 0.48;
   const geo = build(items);
   const mesh = new THREE.Mesh(geo, chunkMat);
   mesh.userData.ownGeometry = true;
   return mesh;
 }
-const chunkMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7 });
+const chunkMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55 });
 
 export const LIMB_BONE_NAMES = LIMB_BONES;
 

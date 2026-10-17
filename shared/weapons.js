@@ -35,7 +35,7 @@ export const WEAPONS = {
     pap: { name: 'MPL-LF', dmg: 78, mag: 48, reserve: 288 },
   },
   ak74u: {
-    name: 'AK-74u', cls: 'smg', mode: 'auto', dmg: 44, head: 2.5, rpm: 720, mag: 20, reserve: 160, reload: 2.0,
+    name: 'AK-47', cls: 'smg', mode: 'auto', dmg: 44, head: 2.5, rpm: 720, mag: 20, reserve: 160, reload: 2.0,
     spread: [2.8, 1.0], pen: 1, range: 32, recoil: 1.0, move: 1.02, sound: 'ak', cost: 1200,
     pap: { name: 'AK-74fu2', dmg: 95, mag: 40, reserve: 280 },
   },
@@ -81,7 +81,7 @@ export const WEAPONS = {
     pap: { name: 'Cobra', dmg: 340, mag: 12, reserve: 120 },
   },
   dragunov: {
-    name: 'Dragunov', cls: 'sniper', mode: 'semi', dmg: 450, head: 3, rpm: 190, mag: 10, reserve: 40, reload: 2.8,
+    name: 'Mosin Sniper', cls: 'sniper', mode: 'semi', dmg: 450, head: 3, rpm: 190, mag: 10, reserve: 40, reload: 2.8,
     spread: [4, 0.05], pen: 5, range: 120, recoil: 5, move: 0.95, sound: 'sniper', zoom: 25, box: 7,
     pap: { name: 'D115 Disassembler', dmg: 1000, mag: 15, reserve: 60 },
   },

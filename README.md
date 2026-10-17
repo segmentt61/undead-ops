@@ -194,6 +194,13 @@ Safari starts on Medium. Resolution scales down automatically when the frame rat
   generator, propane tank, tool cart and chest, drawer cabinet, trash bags and can, covered car, potted plant, wheelchair,
   stove, drill press, projector, cement bags, tyre, school chair, utility box, laptop, industrial / caged / fluorescent /
   street lamps, service pistol. Optimised with [glTF-Transform](https://gltf-transform.dev) (meshopt + WebP).
+- AK-47: [AK by loafbrr](https://opengameart.org/content/ak) (CC0); scoped bolt-action rifle: [Poly Haven](https://polyhaven.com/a/bolt_action_rifle_7_62) (CC0)
+- First-person arms: cut from the Rocketbox Military_Male_01 avatar (MIT)
+- Industrial metal round music: Butcher's Lair, Biolab and Cyborg Factory fight themes by
+  [GTDStudio aka Palrom](https://opengameart.org/users/gtdstudio-aka-palrom) (OGA-BY 3.0),
+  [Soul Ripper](https://opengameart.org/content/soul-ripper) by Alexandr Zhelanov (CC-BY 4.0),
+  [German Industrial Metal](https://opengameart.org/content/german-industrial-metal) by Bogart VGM (CC-BY 4.0),
+  [Cybersecutor](https://opengameart.org/content/cybersecutor) by shggothslave (CC0)
 - Reflections HDRI: [Abandoned Factory Canteen 01 by Poly Haven](https://polyhaven.com/a/abandoned_factory_canteen_01)
 
 ## Older looks

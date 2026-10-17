@@ -41,14 +41,14 @@ export const POWERUP_NAMES = {
 
 export const PLAYER_COLORS = ['#f5f5f5', '#4aa3ff', '#ffd23f', '#5be37d', '#ff7ab8', '#ff8c2a', '#b18cff', '#3ff5e1'];
 
-// Black Ops 1 style health curve: +100 per round until round 10, then +10% per round.
+// Arcade health curve (about half of Black Ops 1): +55 per round until round 10, then +7% per round.
 export function zombieHealth(round) {
-  if (round < 10) return 150 + 100 * (round - 1);
-  return Math.round(950 * Math.pow(1.1, round - 9));
+  if (round < 10) return 100 + 55 * (round - 1);
+  return Math.round(560 * Math.pow(1.07, round - 9));
 }
 
 export function dogHealth(round) {
-  return Math.min(1600, 200 + round * 60);
+  return Math.min(900, 120 + round * 35);
 }
 
 export function zombieCount(round, players) {
