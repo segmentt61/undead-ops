@@ -15,9 +15,12 @@ registerSounds({
   zattack: [1, 3, 4, 5, 6, 7, 8, 9, 11, 14, 16, 17, 18].map((i) => `/assets/sfx/monster/m${i}.m4a`).concat([2, 3, 5, 6, 7, 10, 11, 13, 14, 22, 24].map((i) => `/assets/sfx/zombie/z${i}.m4a`)),
   zdeath: [2, 10, 12, 13, 15].map((i) => `/assets/sfx/monster/m${i}.m4a`),
   music: '/assets/sfx/music.m4a',
-  rock1: '/assets/sfx/rock1.m4a', rock2: '/assets/sfx/rock2.m4a', rock3: '/assets/sfx/rock3.m4a',
 });
-const ROCK = ['rock1', 'rock3', 'rock2'];
+// Round music is streamed in one track at a time (decoded songs are big, phones have little memory).
+// Heavy metal from round one, getting heavier as the rounds climb; dog rounds get their own track.
+const MUSIC = Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8].map((i) => [`rock${i}`, `/assets/sfx/rock${i}.m4a`]));
+const ROCK = ['rock4', 'rock7', 'rock5', 'rock8', 'rock3', 'rock1'];
+const DOG_TRACK = 'rock6';
 
 const SYNTH_KIND = {
   pistol: 'pistol', pistol2: 'pistol', magnum: 'magnum', shotgun_double: 'shotgun', shotgun_pump: 'shotgun', shotgun_semi: 'shotgun',
@@ -245,13 +248,15 @@ class AudioEngine {
   // ------------------------------------------------------------- weapons
   shot(kind, x, z, local = false, pap = false) {
     if (SYNTH_KIND[kind] && this.samples[kind]) {
-      this.sample(kind, { vol: local ? 0.8 : 0.7, x, z, range: 18, vary: 0.035, reverb: local ? 0.45 : 1.1 });
+      this.sample(kind, { vol: local ? 1.0 : 0.75, x, z, range: 22, vary: 0.035, reverb: local ? 0.55 : 1.2 });
       if (local) {
-        // low-end body + a crisp mechanical transient so the recording punches in first person
-        const o = this.out(0.55, undefined, undefined, 14, 0);
+        // heavy low-end thump, a crisp mechanical crack and the room slapping back
+        const heavy = kind.startsWith('shotgun') || kind === 'sniper' || kind === 'magnum' || kind === 'lmg';
+        const o = this.out(0.75, undefined, undefined, 14, 0);
         if (o) {
-          this.tone(o, { freq: 95, to: 42, dur: 0.11, peak: 0.7 });
-          this.burst(o, { dur: 0.025, type: 'bandpass', freq: 3500, q: 1.5, peak: 0.35 });
+          this.tone(o, { freq: heavy ? 80 : 105, to: 34, dur: heavy ? 0.2 : 0.13, peak: heavy ? 1.3 : 1.0 });
+          this.burst(o, { dur: 0.03, type: 'bandpass', freq: 3200, q: 1.2, peak: 0.5 });
+          this.burst(o, { dur: heavy ? 0.45 : 0.28, type: 'lowpass', freq: 700, sweep: 180, peak: heavy ? 0.45 : 0.28, delay: 0.035 });
           if (kind === 'rifle_semi' || kind === 'sniper') this.burst(o, { dur: 0.04, type: 'highpass', freq: 4000, peak: 0.2, delay: 0.07 });
         }
         if (pap) { const p = this.out(0.3, undefined, undefined, 14, 0.3); if (p) this.tone(p, { freq: 700, to: 2400, dur: 0.12, type: 'triangle', peak: 0.12 }); }
@@ -592,8 +597,15 @@ class AudioEngine {
     if (mode === 'combat' && this.rockEnabled === false) mode = 'calm';
     const t = this.t;
     if (mode === 'combat') {
-      const key = dog ? 'rock2' : ROCK[(round - 1) % ROCK.length];
+      const key = dog ? DOG_TRACK : ROCK[(round - 1) % ROCK.length];
+      if (this.combatKey !== key && !this.samples[key]?.length) {
+        this.loadTrack(key).then(() => { if (this.musicMode === 'combat' && this.wantKey === key) this.setMusicMode('combat', round, dog); });
+        this.wantKey = key;
+      }
       if (this.combatKey !== key && this.samples[key]?.length) {
+        // free the previous song's decoded audio once it has faded out
+        const prevKey = this.combatKey;
+        if (prevKey && prevKey !== key) setTimeout(() => { if (this.combatKey !== prevKey) delete this.samples[prevKey]; }, 2500);
         const old = this.combatSrc;
         if (old) { const g = old._gain; g.gain.setTargetAtTime(0, t, 0.4); old.stop(t + 2); }
         const src = this.ctx.createBufferSource();
@@ -608,7 +620,7 @@ class AudioEngine {
         this.combatSrc = src;
         this.combatKey = key;
       }
-      this.combatGain.gain.setTargetAtTime(1.15, t, 0.8);
+      this.combatGain.gain.setTargetAtTime(1.7, t, 0.6);
       this.calmGain.gain.setTargetAtTime(0.15, t, 0.8);
     } else {
       this.combatGain.gain.setTargetAtTime(mode === 'off' ? 0 : 0, t, 1.5);
@@ -616,6 +628,15 @@ class AudioEngine {
       if (mode !== 'combat') this.combatKey = this.combatKey; // keep the track ready for the next round
     }
     this.musicMode = mode;
+  }
+
+  loadTrack(key) {
+    if (!this.trackLoads) this.trackLoads = {};
+    if (!this.trackLoads[key]) {
+      this.trackLoads[key] = fetch(MUSIC[key]).then((r) => r.arrayBuffer()).then((b) => this.ctx.decodeAudioData(b))
+        .then((buf) => { this.samples[key] = [buf]; }).catch(() => {}).finally(() => { delete this.trackLoads[key]; });
+    }
+    return this.trackLoads[key];
   }
 
   say() { /* the robotic text-to-speech announcer was removed; stingers carry the moment instead */ }

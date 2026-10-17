@@ -182,7 +182,9 @@ Safari starts on Medium. Resolution scales down automatically when the frame rat
 - Ambient music: [Post Apocalyptic Wastelands by Juhani Junkala (SubspaceAudio)](https://opengameart.org/content/horror-atmosphere)
 - Rock/metal round music: [rocky musicloop by johndekale](https://opengameart.org/content/rocky-musicloop),
   [Boss Battle #6 Metal by nene](https://opengameart.org/content/boss-battle-6-metal),
-  [JRPG Epic Rock Battle Theme #1 by HydroGene](https://opengameart.org/content/jrpg-epic-rock-battle-theme-1)
+  [JRPG Epic Rock Battle Theme #1 by HydroGene](https://opengameart.org/content/jrpg-epic-rock-battle-theme-1),
+  heavy metal round tracks: [Boss Battle #7](https://opengameart.org/content/boss-battle-7-metal), [#8](https://opengameart.org/content/boss-battle-8-metal) and [#9 Metal](https://opengameart.org/content/boss-battle-9-metal) by nene,
+  [Fight for Better Future](https://opengameart.org/content/fight-for-better-future-rockmetal), [Once More (Metal)](https://opengameart.org/content/once-more-metal)
 - Characters (soldiers and zombies): [Microsoft Rocketbox Avatar Library](https://github.com/microsoft/Microsoft-Rocketbox) (MIT licence, see `public/assets/rb/LICENSE`) — Military_Male_01, Medical_Male_02, Police_Male_02, Construction_Male_01, Business_Male_02, Male_Adult_05, Female_Adult_03. Walking and running are animated procedurally in `public/js/rig.js`.
 - Wall, floor and ceiling materials: [ambientCG](https://ambientcg.com) — Bricks097, Bricks094, Concrete012,
   PaintedPlaster017, Tiles141, Tiles105, Tiles074, Tiles139, WoodFloor043, Planks039, CorrugatedSteel005,

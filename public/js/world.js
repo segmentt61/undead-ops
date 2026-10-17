@@ -86,6 +86,7 @@ export class World {
     this.flickerLights = [];
     this.powered = [];
     this.time = 0;
+    this.colliders = []; // round obstacles the grid doesn't know about: { x, z, r }
     this.build();
   }
 
@@ -115,6 +116,9 @@ export class World {
     this.buildObjects();
     this.buildBox();
     buildProps(this.scene, MAP.props);
+    // decoration that you'd bump into (it is not in the grid, so it gets small round colliders)
+    const SOLID_DECOR = { wheelchair: 0.45, cart: 0.42, trash: 0.35 };
+    for (const p of MAP.props) if (p.decor && SOLID_DECOR[p.kind]) this.colliders.push({ x: p.x + 0.5, z: p.y + 0.5, r: SOLID_DECOR[p.kind] });
     // keep posters and blood off the wall-buys, perks and box spots
     const avoid = [];
     for (const o of MAP.objects) for (const d of [-1, 0, 1]) avoid.push([o.x + (o.face[1] ? d : 0), o.y + (o.face[0] ? d : 0)]);
@@ -354,7 +358,9 @@ export class World {
 
   buildDoors() {
     this.doorGroups = new Map();
-    const doorMat = SF.surfaceMaterial(surfaces().door, [1, 1]);
+    // doors: scanned worn wood with iron straps
+    const doorMat = SF.surfaceMaterial(surf('woodOld'), [0.45, 1.36], { color: new THREE.Color('#8a6e5c') });
+    const strapMat = new THREE.MeshStandardMaterial({ color: '#2a2622', metalness: 0.7, roughness: 0.55 });
     for (const d of MAP.doors) {
       const lintelMat = this.wallMatAt(d.cells[0][0], d.cells[0][1]);
       const horiz = d.cells.every((c) => c[1] === d.cells[0][1]);
@@ -374,6 +380,11 @@ export class World {
         else panel.position.set(0, 1.5, left ? 0.5 : -0.5);
         panel.castShadow = panel.receiveShadow = true;
         hinge.add(panel);
+        for (const sy of [0.55, 2.45]) {
+          const strap = new THREE.Mesh(MD.boxGeo(horiz ? 0.96 : 0.25, 0.09, horiz ? 0.25 : 0.96), strapMat);
+          strap.position.set(panel.position.x, sy, panel.position.z);
+          hinge.add(strap);
+        }
         this.scene.add(hinge);
         panels.push({ hinge, left });
       });
@@ -503,6 +514,7 @@ export class World {
           coneOpacity = 0;
         } else if (real && lamp === 'pole') {
           placeReal('street_lamp_01', pos.x, 0, pos.z);
+          this.colliders.push({ x: pos.x, z: pos.z, r: 0.16 });
           bulbMesh = new THREE.Mesh(MD.boxGeo(0.3, 0.04, 0.2), bulbMat);
           pos.y = 3.72;
           bulbMesh.position.copy(pos);
@@ -536,6 +548,7 @@ export class World {
           light.position.copy(pos).y -= 0.25;
           coneOpacity = 0;
         } else if (lamp === 'pole') {
+          this.colliders.push({ x: pos.x, z: pos.z, r: 0.12 });
           const pole = new THREE.Mesh(poleGeo, MD.mat('#26282a'));
           pole.position.set(pos.x, 2.2, pos.z);
           const head = new THREE.Mesh(MD.boxGeo(0.5, 0.12, 0.3), MD.mat('#26282a'));

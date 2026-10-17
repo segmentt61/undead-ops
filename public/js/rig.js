@@ -6,6 +6,8 @@ import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { build } from './characters.js';
+import { cellAt as cellAtRd, T as TRd } from '/shared/map.js';
+
 
 // avatar -> how it is used; colours are for the flying gore chunks
 export const SKINS = {
@@ -200,6 +202,11 @@ export class RigCharacter {
     this.armPose = null;
     this.idleT = Math.random() * 10;
     this.zombie = def.zombie;
+    // every zombie moves a little differently: a limp, a sway, a lurch
+    this.limp = def.zombie ? Math.random() * 0.45 : 0;
+    this.sway = def.zombie ? 0.02 + Math.random() * 0.04 : 0.01;
+    this.lurch = def.zombie ? Math.random() * Math.PI * 2 : 0;
+    this.hit = new THREE.Vector3();   // flinch from bullets, decays quickly
     // glowing eyes on the dead
     if (def.zombie && raw.Bip01_LEye && raw.Bip01_REye) {
       this.model.updateMatrixWorld(true);
@@ -211,6 +218,16 @@ export class RigCharacter {
         eb.add(e);
       }
     }
+  }
+
+  /** Bullet impact: jerk the torso (or head) away from the shot. */
+  flinch(dir, part, dmg = 30) {
+    const k = Math.min(1, dmg / 60) * (part === 1 ? 1.4 : 1);
+    this.root.updateMatrixWorld(true);
+    const local = new THREE.Vector3(dir.x, 0, dir.z).applyQuaternion(this.root.getWorldQuaternion(new THREE.Quaternion()).invert());
+    this.hit.addScaledVector(local, 0.35 * k);
+    this.hit.y = part === 1 ? 1 : 0;
+    this.hit.clampLength(0, 0.6);
   }
 
   /** Point a bone (from its joint towards `child`) along a direction given in body space. */
@@ -241,20 +258,25 @@ export class RigCharacter {
     this.idleT += dt;
     const ph = this.phase;
     const A = moving ? Math.min(0.62, 0.16 + 0.075 * s) : 0;
-    // pelvis bob (model units are centimetres)
+    // pelvis bob and side-to-side weight shift
     this.model.position.y = moving ? -Math.abs(Math.cos(ph)) * 0.022 * (0.4 + Math.min(1, s / 4)) : Math.sin(this.idleT * 1.6) * 0.004;
+    this.model.position.x = moving ? Math.sin(ph) * this.sway : Math.sin(this.idleT * 0.8) * this.sway * 0.4;
     this.model.updateMatrixWorld(true);
+    this.hit.multiplyScalar(Math.exp(-dt * 7));
     this.body.getWorldQuaternion(_bodyQ);
     // torso: zombies hunch and lurch, runners lean into it
     const lean = (this.zombie ? 0.22 : 0.06) + Math.min(0.3, s * 0.04) + (moving ? 0.03 * Math.sin(ph * 2) : 0.015 * Math.sin(this.idleT * 1.6));
-    const roll = moving ? Math.sin(ph) * 0.06 : 0;
-    this.aim('Spine1', 'Neck', _d.set(roll, Math.cos(lean), Math.sin(lean)));
+    const roll = (moving ? Math.sin(ph) * (this.zombie ? 0.12 : 0.05) : 0) + (this.zombie ? Math.sin(this.idleT * 0.5 + this.lurch) * 0.08 : 0);
+    const hx = this.hit.x, hz = this.hit.z, hh = this.hit.y;
+    this.aim('Spine1', 'Neck', _d.set(roll + hx * (1 - hh * 0.5), Math.cos(lean), Math.sin(lean) + hz * (1 - hh * 0.5)));
     const tilt = this.zombie ? 0.25 + Math.sin(this.idleT * 0.9) * 0.08 : 0.08;
-    this.aim('Neck', 'Head', _d.set(this.zombie ? Math.sin(this.idleT * 0.7) * 0.25 : 0, Math.cos(tilt), Math.sin(tilt)));
+    // zombies twitch their heads now and then
+    const twitch = this.zombie && Math.sin(this.idleT * 3.1 + this.lurch) > 0.97 ? 0.35 : 0;
+    this.aim('Neck', 'Head', _d.set((this.zombie ? Math.sin(this.idleT * 0.7) * 0.25 : 0) + twitch + hx * hh * 1.5, Math.cos(tilt), Math.sin(tilt) + hz * hh * 1.5));
     // legs
     for (const [side, sgn, off] of [['Left', 1, 0], ['Right', -1, Math.PI]]) {
       const p = ph + off;
-      const a = A * Math.sin(p);
+      const a = A * Math.sin(p) * (side === 'Left' ? 1 - this.limp : 1);
       const knee = moving ? 0.1 + (0.25 + A * 1.3) * Math.max(0, Math.cos(p)) : 0.04;
       const spread = 0.06 * sgn;
       this.aim(`${side}UpLeg`, `${side}Leg`, _d.set(spread, -Math.cos(a), Math.sin(a)));
@@ -433,3 +455,160 @@ export function limbChunk(skinKey, kind) {
 const chunkMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7 });
 
 export const LIMB_BONE_NAMES = LIMB_BONES;
+
+// ------------------------------------------------------------------ ragdoll
+// Verlet ragdoll for deaths: point masses at the joints held together by distance constraints,
+// falling under gravity, colliding with the floor, crates and walls. Each frame the skeleton is
+// posed to follow the points: the torso as a rigid frame, every limb bone aimed at its child.
+
+const RD_POINTS = ['Hips', 'Spine2', 'Neck', 'HeadTop', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightArm', 'RightForeArm', 'RightHand',
+  'LeftUpLeg', 'LeftLeg', 'LeftFoot', 'LeftToe', 'RightUpLeg', 'RightLeg', 'RightFoot', 'RightToe'];
+const RD_LINKS = [
+  ['Hips', 'Spine2'], ['Spine2', 'Neck'], ['Neck', 'HeadTop'], ['Neck', 'LeftArm'], ['Neck', 'RightArm'], ['LeftArm', 'RightArm'],
+  ['Spine2', 'LeftArm'], ['Spine2', 'RightArm'], ['Hips', 'LeftUpLeg'], ['Hips', 'RightUpLeg'], ['LeftUpLeg', 'RightUpLeg'],
+  ['LeftUpLeg', 'Spine2'], ['RightUpLeg', 'Spine2'], ['LeftArm', 'LeftUpLeg'], ['RightArm', 'RightUpLeg'], ['Spine2', 'HeadTop', 0.9],
+  ['LeftArm', 'LeftForeArm'], ['LeftForeArm', 'LeftHand'], ['RightArm', 'RightForeArm'], ['RightForeArm', 'RightHand'],
+  ['LeftUpLeg', 'LeftLeg'], ['LeftLeg', 'LeftFoot'], ['LeftFoot', 'LeftToe'], ['RightUpLeg', 'RightLeg'], ['RightLeg', 'RightFoot'], ['RightFoot', 'RightToe'],
+  // joint limits as minimum spans: knees and elbows can't fold flat, feet stay below the hips
+  ['LeftUpLeg', 'LeftFoot', 0.55, true], ['RightUpLeg', 'RightFoot', 0.55, true], ['LeftArm', 'LeftHand', 0.45, true], ['RightArm', 'RightHand', 0.45, true],
+  ['LeftLeg', 'LeftToe', 0.8, true], ['RightLeg', 'RightToe', 0.8, true],
+];
+const RD_RADIUS = { HeadTop: 0.1, Hips: 0.12, Spine2: 0.13, Neck: 0.08 };
+const _rv = new THREE.Vector3(), _rw = new THREE.Vector3(), _rm = new THREE.Matrix4(), _rq = new THREE.Quaternion(), _rq2 = new THREE.Quaternion();
+
+function solidAt(x, y, z) {
+  const t = cellAtRd(Math.floor(x), Math.floor(z));
+  if (t === TRd.WALL || t === TRd.BLOCK || t === TRd.YARD || t === TRd.DOOR || t === TRd.WINDOW) return 99;
+  if (t === TRd.CRATE) return 1;
+  return 0;
+}
+
+export class Ragdoll {
+  /** dir: direction of the killing shot; power: how hard it hit */
+  constructor(rig, dir, power = 1, extraVel = null) {
+    this.rig = rig;
+    const B = rig.bones;
+    rig.root.updateMatrixWorld(true);
+    this.p = {}; this.o = {};
+    for (const n of RD_POINTS) {
+      let w;
+      if (n === 'HeadTop') {
+        const h = B.Head.getWorldPosition(new THREE.Vector3()), nk = B.Neck.getWorldPosition(new THREE.Vector3());
+        w = h.clone().add(h.clone().sub(nk).normalize().multiplyScalar(0.2));
+      } else w = B[n].getWorldPosition(new THREE.Vector3());
+      this.p[n] = w;
+      this.o[n] = w.clone();
+    }
+    this.links = RD_LINKS.map(([a, b, k = 1, min = false]) => ({ a, b, len: this.p[a].distanceTo(this.p[b]) * k, min }));
+    // the shot pushes the upper body, legs buckle; a little randomness so no two deaths match
+    const d = dir ? new THREE.Vector3(dir[0] ?? dir.x, 0, dir[2] ?? dir.z).normalize() : new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize();
+    const dt = 1 / 60;
+    for (const n of RD_POINTS) {
+      const upper = /Head|Neck|Spine|Arm|Hand/.test(n);
+      const v = d.clone().multiplyScalar((upper ? 2.6 : 0.6) * power + Math.random() * 0.4);
+      v.y = upper ? 0.2 * power : -0.3;
+      v.x += (Math.random() - 0.5) * 0.6; v.z += (Math.random() - 0.5) * 0.6;
+      if (/Leg|Foot|Toe/.test(n)) v.addScaledVector(d, -0.4);
+      if (extraVel) v.add(extraVel);
+      this.o[n].addScaledVector(v, -dt);
+    }
+    this.t = 0;
+    this.acc = 0;
+    this.active = true;
+    rig.frozen = true;
+  }
+
+  step(dt) {
+    if (!this.active) return;
+    this.t += dt;
+    this.acc = Math.min(0.1, this.acc + dt);
+    const h = 1 / 60;
+    while (this.acc >= h) {
+      this.acc -= h;
+      this.integrate(h);
+    }
+    if (this.t > 3) this.active = false;
+    this.pose();
+  }
+
+  integrate(h) {
+    const g = 15 * h * h;
+    for (const n of RD_POINTS) {
+      const p = this.p[n], o = this.o[n];
+      const vx = (p.x - o.x) * 0.985, vy = (p.y - o.y) * 0.985, vz = (p.z - o.z) * 0.985;
+      o.copy(p);
+      p.x += vx; p.y += vy - g; p.z += vz;
+    }
+    for (let it = 0; it < 6; it++) {
+      for (const L of this.links) {
+        const a = this.p[L.a], b = this.p[L.b];
+        _rv.subVectors(b, a);
+        const dist = _rv.length() || 1e-6;
+        if (L.min && dist >= L.len) continue;
+        const diff = (dist - L.len) / dist * 0.5;
+        a.addScaledVector(_rv, diff);
+        b.addScaledVector(_rv, -diff);
+      }
+      for (const n of RD_POINTS) {
+        const p = this.p[n], o = this.o[n], r = RD_RADIUS[n] || 0.05;
+        // walls: step back out of solid cells
+        const top = solidAt(p.x, p.y, p.z);
+        if (top >= 99) { p.x = o.x; p.z = o.z; }
+        const floor = (top > 0 && top < 99 ? top : 0) + r;
+        if (p.y < floor) {
+          p.y = floor;
+          // ground friction
+          o.x += (p.x - o.x) * 0.35; o.z += (p.z - o.z) * 0.35;
+        }
+      }
+    }
+  }
+
+  /** Move the skeleton onto the simulated points. */
+  pose() {
+    const rig = this.rig, B = rig.bones, P = this.p;
+    // rest the posed bones, then orient the whole body from the torso frame
+    for (const [k, q] of rig.rest) B[k].quaternion.copy(q);
+    rig.body.position.set(0, 0, 0);
+    rig.body.rotation.set(0, 0, 0);
+    rig.model.position.set(0, 0, 0);
+    const right = _rv.subVectors(P.LeftUpLeg, P.RightUpLeg).add(_rw.subVectors(P.LeftArm, P.RightArm)).normalize();
+    const up = new THREE.Vector3().subVectors(P.Neck, P.Hips).normalize();
+    right.addScaledVector(up, -right.dot(up)).normalize();
+    const fwd = new THREE.Vector3().crossVectors(right, up).normalize();
+    _rm.makeBasis(right, up, fwd);
+    _rq.setFromRotationMatrix(_rm);
+    rig.root.updateMatrixWorld(true);
+    rig.root.getWorldQuaternion(_rq2);
+    rig.body.quaternion.copy(_rq2.invert().multiply(_rq));
+    rig.root.updateMatrixWorld(true);
+    // put the pelvis on its point
+    const hip = B.Hips.getWorldPosition(new THREE.Vector3());
+    const off = P.Hips.clone().sub(hip);
+    // the rig hangs under the entity's own (rotated) group, so move it in that group's space
+    const target = rig.root.getWorldPosition(new THREE.Vector3()).add(off);
+    if (rig.root.parent) rig.root.parent.worldToLocal(target);
+    rig.root.position.copy(target);
+    rig.root.updateMatrixWorld(true);
+    _bodyQ.copy(rig.body.getWorldQuaternion(new THREE.Quaternion()));
+    const aimW = (bone, child, target) => {
+      const b = B[bone], c = B[child];
+      if (!b || !c || rig.hidden.has(bone)) return;
+      b.updateMatrixWorld(true);
+      const from = c.getWorldPosition(new THREE.Vector3()).sub(b.getWorldPosition(new THREE.Vector3()));
+      const to = target.clone().sub(b.getWorldPosition(new THREE.Vector3()));
+      if (from.lengthSq() < 1e-10 || to.lengthSq() < 1e-10) return;
+      rotateBoneTo(b, from.normalize(), to.normalize());
+    };
+    aimW('Spine1', 'Neck', P.Neck);
+    aimW('Neck', 'Head', P.HeadTop);
+    for (const s of ['Left', 'Right']) {
+      aimW(`${s}Arm`, `${s}ForeArm`, P[`${s}ForeArm`]);
+      aimW(`${s}ForeArm`, `${s}Hand`, P[`${s}Hand`]);
+      aimW(`${s}UpLeg`, `${s}Leg`, P[`${s}Leg`]);
+      aimW(`${s}Leg`, `${s}Foot`, P[`${s}Foot`]);
+      aimW(`${s}Foot`, `${s}Toe`, P[`${s}Toe`]);
+    }
+    rig.applyHidden();
+  }
+}

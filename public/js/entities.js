@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import * as MD from './models.js';
 import * as CH from './characters.js';
-import { RigCharacter, rigLoaded, raycastRig, limbChunk, LIMB_BITS, LIMB_BONE_NAMES, zombieSkin } from './rig.js';
+import { RigCharacter, rigLoaded, raycastRig, limbChunk, LIMB_BITS, LIMB_BONE_NAMES, zombieSkin, Ragdoll } from './rig.js';
 
 // gore level is read from the game settings ('extreme' | 'normal' | 'off')
 export const goreCfg = { level: 'extreme' };
@@ -274,6 +274,10 @@ export class Zombies {
     if (kind !== 'nuke' && part !== 1 && Math.random() < 0.6) audio.zombieDeath(pos.x, pos.z);
     e.rig.frozen = true;
     d.rig = true;
+    // physics takes over: the body crumples and falls the way the shot pushed it
+    const power = 0.8 + Math.min(2.5, overkill * 2) + (kind === 'splash' ? 2.5 : 0) + (part === 1 ? 0.4 : 0);
+    const extra = d.vel ? d.vel.clone() : null;
+    try { d.rag = new Ragdoll(e.rig, dir, power, extra); d.vel = null; } catch { d.rag = null; }
   }
 
   // all hittable zombies with their current render transforms
@@ -361,7 +365,9 @@ export class Zombies {
       const d = this.dying[i];
       d.t += dt;
       const { e } = d;
-      if (d.rig) {
+      if (d.rig && d.rag) {
+        d.rag.step(dt);
+      } else if (d.rig) {
         const body = e.rig.body;
         if (d.vel) {
           d.vel.y -= 20 * dt;

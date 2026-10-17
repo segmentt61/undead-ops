@@ -370,6 +370,7 @@ export class Weapons {
         for (const h of zh) {
           hits.push([h.id, h.part, r1(h.dist)]);
           if (h.part === 1) anyHead = true;
+          if (h.e && h.e.rig) h.e.rig.flinch(d, h.part, st.damage || 30);
           if (g.gore !== 'off') {
             g.fx.blood(h.point, d, (h.part === 1 ? 7 : 4) * (g.gore === 'extreme' ? 2 : 1));
             // exit wound: blood sprays onto the wall or floor behind the zombie

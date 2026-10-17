@@ -44,12 +44,16 @@ function atlas() {
   };
   // grime running down from the ceiling
   cell(D.grime, (s) => {
-    for (let i = 0; i < 26; i++) {
-      const gx = rnd() * s, w = 6 + rnd() * 26, len = s * (0.3 + rnd() * 0.7);
+    // soft water stains: blurred, uneven runs instead of hard stripes
+    x.filter = 'blur(6px)';
+    for (let i = 0; i < 18; i++) {
+      const gx = rnd() * s, w = 14 + rnd() * 40, len = s * (0.25 + rnd() * 0.6);
       const g = x.createLinearGradient(0, 0, 0, len);
-      g.addColorStop(0, `rgba(30,22,12,${0.35 + rnd() * 0.3})`); g.addColorStop(1, 'rgba(30,22,12,0)');
-      x.fillStyle = g; x.fillRect(gx, 0, w, len);
+      g.addColorStop(0, `rgba(34,26,16,${0.12 + rnd() * 0.16})`); g.addColorStop(1, 'rgba(34,26,16,0)');
+      x.fillStyle = g;
+      x.beginPath(); x.moveTo(gx, 0); x.lineTo(gx + w, 0); x.lineTo(gx + w * (0.4 + rnd() * 0.4), len); x.lineTo(gx + w * 0.3, len * 0.9); x.closePath(); x.fill();
     }
+    x.filter = 'none';
   });
   // damp stain creeping up from the floor
   cell(D.stain, (s) => {

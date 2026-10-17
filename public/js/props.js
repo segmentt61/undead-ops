@@ -50,7 +50,7 @@ const REAL_KINDS = {
   trash: () => [['trashbag', -0.15, 0, -0.1, 0.3, 1], ['trashbag', 0.2, 0, 0.15, 2, 0.85]],
   rubble: () => [['cement_bag', -0.12, 0, 0, 0.4, 1.1], ['cement_bag', 0.15, 0.17, 0.05, -0.3, 1.1], ['old_tyre', 0.1, 0.09, -0.2, 0, [1, 1, 1]]],
   table: (w, d) => [['WoodenTable_01', 0, 0, 0, w >= d ? 0 : Math.PI / 2, [Math.max(w, d) * 0.95 / 1.79, 1.38, Math.min(w, d) * 0.9 / 0.66]]],
-  desk: (w, d) => [['metal_office_desk', 0, 0, 0, w >= d ? 0 : Math.PI / 2, [Math.max(w, d) * 0.92 / 2, 1, 0.85]], ['classic_laptop', 0.25, 0.79, 0, Math.PI, 0.9], ['SchoolChair_01', 0.2, 0, 0.55, Math.PI, 0.95]],
+  desk: (w, d) => [['metal_office_desk', 0, 0, 0, w >= d ? 0 : Math.PI / 2, [Math.max(w, d) * 0.92 / 2, 1, 0.85]], ['classic_laptop', 0.25, 0.79, 0, Math.PI, 0.9], ['SchoolChair_01', -0.45, 0, 0.18, Math.PI + 0.4, 0.95]],
   labtable: (w, d) => [['metal_office_desk', 0, 0, 0, w >= d ? 0 : Math.PI / 2, [Math.max(w, d) * 0.92 / 2, 1.08, 0.85]], ['filmstrip_projector_8mm', -0.4, 0.85, 0, 0.6, 0.9], ['propane_tank', 0.5, 0.85, 0, 0, 0.6]],
   bed: (w, d) => [['old_bed_frame', 0, 0, 0, w >= d ? Math.PI / 2 : 0, 0.92]],
   gurney: (w, d) => [['old_bed_frame', 0, 0, 0, w >= d ? Math.PI / 2 : 0, [0.75, 0.8, 0.92]]],
