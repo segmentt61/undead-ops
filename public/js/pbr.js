@@ -54,14 +54,29 @@ export async function preloadAll(onProgress) {
  * Replace a material's UVs with world-space ones: vertical faces use (x or z, y), floors and
  * ceilings use (x, z). Works for plain and instanced meshes.
  */
-export function worldUV(mat) {
+export function worldUV(mat, { wet = 0 } = {}) {
   mat.onBeforeCompile = (sh) => {
+    if (wet > 0) {
+      // puddles and damp patches: large-scale noise in world space lowers roughness and darkens,
+      // so lamps leave sharp highlights and reflections on the floor
+      sh.vertexShader = 'varying vec2 vWetXZ;\n' + sh.vertexShader;
+      sh.fragmentShader = `varying vec2 vWetXZ;
+        float wHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float wNoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(wHash(i), wHash(i + vec2(1, 0)), f.x), mix(wHash(i + vec2(0, 1)), wHash(i + vec2(1, 1)), f.x), f.y); }
+      ` + sh.fragmentShader.replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+        float wn = wNoise(vWetXZ * 0.33) * 0.65 + wNoise(vWetXZ * 1.7 + 9.0) * 0.35;
+        float wetK = smoothstep(0.56, 0.7, wn) * ${wet.toFixed(2)};
+        roughnessFactor = mix(roughnessFactor, 0.07, wetK);
+        diffuseColor.rgb *= 1.0 - 0.38 * wetK;`);
+    }
     sh.vertexShader = sh.vertexShader.replace('#include <fog_vertex>', `#include <fog_vertex>
       vec4 wuvPos = vec4( transformed, 1.0 );
       #ifdef USE_INSTANCING
         wuvPos = instanceMatrix * wuvPos;
       #endif
       wuvPos = modelMatrix * wuvPos;
+      ${wet > 0 ? 'vWetXZ = wuvPos.xz;' : ''}
       vec3 wuvN = abs( normalize( mat3( modelMatrix ) * objectNormal ) );
       vec2 wuv = wuvN.y > 0.5 ? vec2( wuvPos.x, -wuvPos.z ) : ( wuvN.x > 0.5 ? vec2( wuvPos.z, wuvPos.y ) : vec2( wuvPos.x, wuvPos.y ) );
       #ifdef USE_MAP
@@ -74,7 +89,7 @@ export function worldUV(mat) {
         vRoughnessMapUv = ( roughnessMapTransform * vec3( wuv, 1.0 ) ).xy;
       #endif`);
   };
-  mat.customProgramCacheKey = () => 'worldUV';
+  mat.customProgramCacheKey = () => 'worldUV' + (wet > 0 ? 'wet' + wet : '');
   return mat;
 }
 

@@ -287,13 +287,22 @@ export class FpHands {
     }
   }
 
-  setWeapon(pistolLike, leftZ) {
-    SoldierArms.prototype.setWeapon.call(this, pistolLike, leftZ);
-    // support hand: palm under the handguard, fingers wrapping up its right side
-    if (!pistolLike) {
-      this.pose.left = { ...this.pose.left, pos: [-0.065, -0.078, leftZ] };
-      this.curl.L = [1.35, 1.4, 0.9];
+  /** Place both hands for a gun; `def` may carry measured grip (rg) and handguard (lg) points. */
+  setWeapon(pistolLike, leftZ, def) {
+    const base = pistolLike ? POSES.pistol : POSES.rifle;
+    const rg = def && def.rg, lg = def && def.lg;
+    // wrist sits behind the grip along the finger direction, a little to the right of the gun
+    const right = rg ? { ...base.right, pos: [0.02, rg[0] + 0.017, rg[1] + 0.057] } : base.right;
+    let left;
+    if (pistolLike) {
+      // support hand cups the shooting hand
+      left = { ...base.left, pos: [right.pos[0] - 0.04, right.pos[1] - 0.025, right.pos[2] - 0.005] };
+    } else {
+      // palm up under the handguard, fingers wrapping up its right side
+      left = { ...base.left, pos: lg ? [-0.06, lg[0] - 0.035, lg[1] + 0.025] : [-0.065, -0.078, leftZ] };
     }
+    this.pose = { right, left };
+    this.curl = { R: base.right.curl, L: pistolLike ? base.left.curl : [1.35, 1.4, 0.9] };
   }
   fist(side) { this.curl[side] = FIST; }
   aimAtGun(gunRoot) { SoldierArms.prototype.aimAtGun.call(this, gunRoot); }

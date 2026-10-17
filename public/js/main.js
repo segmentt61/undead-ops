@@ -111,7 +111,7 @@ function buildScene(ws) {
   const scene = new THREE.Scene();
   game.scene = scene;
   scene.environment = envMap;
-  scene.environmentIntensity = 0.3;
+  scene.environmentIntensity = 0.22;
   game.world = new World(scene, quality);
   game.fx = new FX(scene);
   game.fx.onCasingBounce = () => audio.casing();
@@ -1116,6 +1116,7 @@ function step(dt) {
     p.update(dt, { f, r, jump, sprint: sprint && !w.trigger, tac, crouch }, w.adsT, slot ? slot.stats.move : 1);
     hud.stamina(p.stamina, p.tacSprint);
     p.applyCamera(camera);
+    w.matchLighting(game.world, camera, dt);
     w.update(dt);
     audio.setListener(p.pos.x, p.pos.z, p.yaw);
     if (MAP.theme.rain) audio.setRain(MAP.outdoorAt(Math.floor(p.pos.x), Math.floor(p.pos.z)) ? 1 : 0.35);

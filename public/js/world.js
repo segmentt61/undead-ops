@@ -67,12 +67,12 @@ const STYLES = {
 const styleOf = (room) => STYLES[room?.style] || STYLES.theater;
 
 // a world-space-mapped material: one texture repeat covers `size` metres, seamless across cells
-function worldMat(key, color) {
+function worldMat(key, color, opts) {
   const sf = surf(key);
   const k = 1 / (sf.size || 1);
   const m = SF.surfaceMaterial(sf, [k, k]);
   if (color) m.color.set(color);
-  return worldUV(m);
+  return worldUV(m, opts);
 }
 
 export class World {
@@ -98,7 +98,7 @@ export class World {
     s.fog = new THREE.FogExp2(th.fog || '#0a0c14', th.fogDensity || 0.03);
     this.baseFog = th.fogDensity || 0.03;
 
-    this.hemi = new THREE.HemisphereLight(th.hemiSky || '#7d8cb8', th.hemiGround || '#3a2a1c', th.bright ? 0.62 : 0.5);
+    this.hemi = new THREE.HemisphereLight(th.hemiSky || '#7d8cb8', th.hemiGround || '#3a2a1c', th.bright ? 0.45 : 0.32);
     this.baseHemi = this.hemi.intensity;
     s.add(this.hemi);
     this.moon = new THREE.DirectionalLight('#7f95ff', 0.6);
@@ -157,7 +157,7 @@ export class World {
     for (const r of MAP.rooms) {
       const st = styleOf(r);
       const w = r.x1 - r.x0 + 1, h = r.y1 - r.y0 + 1;
-      const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, h), worldMat(st.floor, st.floorTint));
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, h), worldMat(st.floor, st.floorTint, { wet: this.quality.wet ? (r.outdoor || MAP.theme?.rain ? 1 : 0.7) : 0 }));
       floor.rotation.x = -Math.PI / 2;
       floor.position.set(r.x0 + w / 2, 0, r.y0 + h / 2);
       floor.receiveShadow = true;
@@ -580,7 +580,7 @@ export class World {
     const n = Math.min(this.quality.lights || 6, this.roomLights.length);
     for (let i = 0; i < n; i++) {
       const pl = new THREE.PointLight('#ffffff', 0, 24, 1.15);
-      if (i === 0 && this.quality.shadows) {
+      if (i < (this.quality.shadowLights || 1) && this.quality.shadows) {
         pl.castShadow = true;
         pl.shadow.mapSize.set(1024, 1024);
         pl.shadow.bias = -0.004;
@@ -595,6 +595,7 @@ export class World {
       this.pool.push({ light: pl, lamp: null, fade: 0 });
     }
     this.shadowLight = this.quality.shadows && this.pool[0] ? this.pool[0].light : null;
+    this.shadowLights = this.pool.filter((p) => p.light.castShadow).map((p) => p.light);
     for (const l of this.roomLights) l.light.intensity = l.base;
   }
 
@@ -777,6 +778,7 @@ export class World {
       p.light.position.copy(lamp.light.position);
       p.light.color.copy(lamp.color);
       p.light.distance = lamp.light.distance;
+      if (p.light.castShadow) p.light.shadow.needsUpdate = true;
     };
     for (const lamp of ranked) if (!owner.has(lamp)) { const p = free.shift(); bind(p, lamp, true); owner.set(lamp, p); }
     // the shadow caster always sits on the nearest lamp
@@ -797,7 +799,7 @@ export class World {
     if (this.powerSwitch) this.powerSwitch.userData.setPower(on);
     const apply = (k) => {
       for (const l of this.roomLights) {
-        l.base = (9 + 7 * k) * l.scale;
+        l.base = (12 + 9 * k) * l.scale;
         l.light.intensity = l.shadowed ? 0 : l.base;
         l.cone.opacity = l.coneBase * (1 + 0.7 * k);
       }
@@ -841,7 +843,7 @@ export class World {
       }
       a.needsUpdate = true;
     }
-    if (this.anims.length && this.shadowLight) this.shadowLight.shadow.needsUpdate = true;
+    if (this.anims.length) for (const l of this.shadowLights) l.shadow.needsUpdate = true;
     for (let i = this.anims.length - 1; i >= 0; i--) {
       const a = this.anims[i];
       a.t += dt;

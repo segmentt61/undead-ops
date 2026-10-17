@@ -74,10 +74,13 @@ export class Weapons {
     this.g = game;
     this.viewScene = new THREE.Scene();
     this.viewCam = new THREE.PerspectiveCamera(60, 1, 0.01, 10);
-    this.viewScene.add(new THREE.HemisphereLight('#c8d0ff', '#4a3a2a', 1.6));
+    this.vHemi = new THREE.HemisphereLight('#c8d0ff', '#4a3a2a', 1.6);
+    this.viewScene.add(this.vHemi);
     const dl = new THREE.DirectionalLight('#ffe0c0', 1.4);
     dl.position.set(1, 2, 1.5);
     this.viewScene.add(dl);
+    this.vSun = dl;
+    this.vLightDir = new THREE.Vector3(1, 2, 1.5).normalize();
     this.vFlash = new THREE.PointLight('#ffb060', 0, 3, 1);
     this.vFlash.position.set(0.1, 0, -0.6);
     this.viewScene.add(this.vFlash);
@@ -201,7 +204,7 @@ export class Weapons {
     if (s) {
       this.vm = buildViewModel(s.id, s.pap);
       this.holder.add(this.vm.root);
-      if (this.arms) this.arms.setWeapon(PISTOLS.includes(s.id), Math.max(-0.26, Math.min(-0.12, this.vm.muzzle.z * 0.36)));
+      if (this.arms) this.arms.setWeapon(PISTOLS.includes(s.id), Math.max(-0.26, Math.min(-0.12, this.vm.muzzle.z * 0.36)), GUN_DEFS[s.id]);
     }
   }
 
@@ -575,6 +578,33 @@ export class Weapons {
 
     this.updateNades(dt);
     this.updateViewModel(dt);
+  }
+
+  /**
+   * Light the gun and hands like the spot you're standing in: key light from the nearest lamp (its
+   * direction and colour, in view space), and overall level from how much lamp light reaches you.
+   */
+  matchLighting(world, cam, dt) {
+    if (!world || !world.pool) return;
+    let best = null, bestK = 0, total = 0;
+    for (const p of world.pool) {
+      if (!p.lamp || p.light.intensity <= 0) continue;
+      const k = p.light.intensity / (1 + p.light.position.distanceToSquared(cam.position));
+      total += k;
+      if (k > bestK) { bestK = k; best = p; }
+    }
+    const lvl = Math.min(1, total / 3.5);
+    const s = Math.min(1, dt * 4);
+    this.vHemi.intensity += (0.55 + 1.05 * lvl - this.vHemi.intensity) * s;
+    this.vSun.intensity += (0.35 + 1.7 * lvl - this.vSun.intensity) * s;
+    if (best) {
+      const dir = best.light.position.clone().sub(cam.position);
+      dir.y += 0.6; // keep it from lighting the gun from straight underneath
+      dir.applyQuaternion(cam.quaternion.clone().invert()).normalize();
+      this.vLightDir.lerp(dir, s).normalize();
+      this.vSun.color.lerp(best.light.color, s);
+    }
+    this.vSun.position.copy(this.vLightDir).multiplyScalar(2);
   }
 
   updateViewModel(dt) {

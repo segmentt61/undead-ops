@@ -27,8 +27,8 @@ class OverlayPass extends Pass {
 }
 
 export const QUALITY = {
-  high:   { label: 'High',   lights: 6, pixelRatio: 1.5, shadows: true,  ao: true,  bloom: true,  msaa: 4, post: true },
-  medium: { label: 'Medium', lights: 5, pixelRatio: 1.25, shadows: false, ao: false, bloom: true,  msaa: 2, post: true },
+  high:   { label: 'High',   lights: 6, pixelRatio: 1.5, shadows: true,  shadowLights: 2, ao: true,  bloom: true,  msaa: 4, post: true, wet: true },
+  medium: { label: 'Medium', lights: 5, pixelRatio: 1.25, shadows: false, ao: false, bloom: true,  msaa: 2, post: true, wet: true },
   low:    { label: 'Low',    lights: 3, pixelRatio: 1.25, shadows: false, ao: false, bloom: false, msaa: 2, post: true },
 };
 

@@ -34,21 +34,24 @@ function material(name) {
 }
 
 // Which model each weapon uses, its real-world length (m) and where the grip sits (fraction from the rear).
+// rg / lg: where the right hand's grip and the support hand's handguard are, as [y, z] in the prepared
+// gun's space (measured from side renders); cut: [ymin, ymax, zmin, zmax] boxes of loose debris to remove;
+// level: pitch that levels a model that was exported tilted.
 export const GUN_DEFS = {
-  m1911:    { file: 'Pistol_1', glb: 'sf_m1911', dir: 'guns', auto: true, len: 0.216, grip: 0.24 },
-  python:   { file: 'Revolver_2', len: 0.29, grip: 0.18 },
-  olympia:  { file: 'Shotgun_SawedOff', glb: 'sf_olympia', dir: 'guns', auto: true, len: 1.05, grip: 0.3 },
-  stakeout: { file: 'Shotgun_2', glb: 'sf_stakeout', dir: 'guns', auto: true, len: 1.0, grip: 0.28 },
-  spas:     { file: 'Shotgun_1', glb: 'sf_spas', dir: 'guns', auto: true, len: 1.0, grip: 0.28 },
-  m14:      { file: 'AssaultRifle_2', glb: 'sf_m14', dir: 'guns', auto: true, len: 1.1, grip: 0.33 },
-  mp40:     { file: 'SubmachineGun_1', glb: 'sf_mp40', dir: 'guns', auto: true, len: 0.83, grip: 0.33 },
-  mpl:      { file: 'SubmachineGun_4', glb: 'sf_mpl', dir: 'guns', auto: true, len: 0.36, grip: 0.17 },
-  ak74u:    { file: 'AssaultRifle_1', glb: 'sf_ak', dir: 'guns', auto: true, drop: ['platform_plank_Planks_0'], lowCut: 0.05, pitch: 0.236, len: 0.94, grip: 0.3 },
-  m16:      { file: 'AssaultRifle2_1', glb: 'sf_m16', dir: 'guns', auto: true, len: 1.0, grip: 0.37 },
-  galil:    { file: 'AssaultRifle_4', len: 0.98, grip: 0.36 },
-  commando: { file: 'AssaultRifle2_4', glb: 'sf_commando', dir: 'guns', auto: true, drop: ['bullets_bullets_0', 'gps_gps_0', 'acog_optic001_0'], adsZ: 0.2, len: 0.84, grip: 0.33 },
-  hk21:     { file: 'AssaultRifle_5', glb: 'sf_hk21', dir: 'guns', auto: true, topRange: [0, 0.28], adsX: 0.1, len: 1.15, grip: 0.31 },
-  dragunov: { file: 'SniperRifle_6', glb: 'bolt_rifle', dir: 'guns', len: 1.18, grip: 0.36 },
+  m1911:    { file: 'Pistol_1', glb: 'sf_m1911', dir: 'guns', auto: true, len: 0.216, grip: 0.24, rg: [-0.024, 0.013] },
+  python:   { file: 'Revolver_2', len: 0.29, grip: 0.18, rg: [-0.037, 0.02] },
+  olympia:  { file: 'Shotgun_SawedOff', glb: 'sf_olympia', dir: 'guns', auto: true, len: 1.05, grip: 0.3, rg: [-0.015, -0.013], lg: [0.004, -0.317] },
+  stakeout: { file: 'Shotgun_2', glb: 'sf_stakeout', dir: 'guns', auto: true, len: 1.0, grip: 0.28, rg: [-0.016, -0.013], lg: [-0.009, -0.36] },
+  spas:     { file: 'Shotgun_1', glb: 'sf_spas', dir: 'guns', auto: true, len: 1.0, grip: 0.28, rg: [-0.085, 0.02], lg: [-0.044, -0.34], cut: [[-0.15, -0.075, -0.075, -0.045]] },
+  m14:      { file: 'AssaultRifle_2', glb: 'sf_m14', dir: 'guns', auto: true, len: 1.1, grip: 0.33, rg: [-0.04, 0.075], lg: [-0.03, -0.2] },
+  mp40:     { file: 'SubmachineGun_1', glb: 'sf_mp40', dir: 'guns', auto: true, len: 0.83, grip: 0.33, rg: [-0.067, 0], lg: [-0.015, -0.243] },
+  mpl:      { file: 'SubmachineGun_4', glb: 'sf_mpl', dir: 'guns', auto: true, len: 0.36, grip: 0.17, rg: [-0.061, 0.031], lg: [-0.02, -0.13] },
+  ak74u:    { file: 'AssaultRifle_1', glb: 'sf_ak', dir: 'guns', auto: true, drop: ['platform_plank_Planks_0'], lowCut: 0.05, pitch: 0.236, len: 0.94, grip: 0.3, rg: [-0.089, 0], lg: [-0.026, -0.287], cut: [[-0.2, -0.14, -0.28, -0.25]] },
+  m16:      { file: 'AssaultRifle2_1', glb: 'sf_m16', dir: 'guns', auto: true, len: 1.0, grip: 0.37, rg: [-0.133, 0.039], lg: [-0.048, -0.287] },
+  galil:    { file: 'AssaultRifle_4', len: 0.98, grip: 0.36, rg: [-0.089, 0.046], lg: [-0.019, -0.287] },
+  commando: { file: 'AssaultRifle2_4', glb: 'sf_commando', dir: 'guns', auto: true, drop: ['bullets_bullets_0', 'gps_gps_0', 'acog_optic001_0'], adsZ: 0.2, len: 0.84, grip: 0.33, rg: [-0.113, 0.024], lg: [-0.039, -0.287] },
+  hk21:     { file: 'AssaultRifle_5', glb: 'sf_hk21', dir: 'guns', auto: true, level: -0.216, topRange: [0, 0.28], adsX: 0.1, len: 1.15, grip: 0.31, rg: [-0.089, 0.03], lg: [-0.036, -0.296], cut: [[-0.35, -0.045, -0.6, -0.48]] },
+  dragunov: { file: 'SniperRifle_6', glb: 'bolt_rifle', dir: 'guns', len: 1.18, grip: 0.36, rg: [-0.033, 0.139], lg: [-0.019, -0.2], cut: [[-0.1, -0.074, -0.03, 0.05]] },
   knife:    { file: 'Bayonet', len: 0.3, grip: 0.2 },
 };
 
@@ -268,6 +271,34 @@ function unskin(obj) {
   }
 }
 
+// Remove triangles whose centre falls inside any [ymin, ymax, zmin, zmax] box (gun space).
+function cutBoxes(obj, boxes) {
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  obj.traverse((o) => {
+    if (!o.isMesh) return;
+    const geo = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+    const pos = geo.attributes.position, mw = o.matrixWorld;
+    const keep = [];
+    for (let i = 0; i < pos.count; i += 3) {
+      a.fromBufferAttribute(pos, i).applyMatrix4(mw);
+      b.fromBufferAttribute(pos, i + 1).applyMatrix4(mw);
+      c.fromBufferAttribute(pos, i + 2).applyMatrix4(mw);
+      const y = (a.y + b.y + c.y) / 3, z = (a.z + b.z + c.z) / 3;
+      if (!boxes.some(([y0, y1, z0, z1]) => y > y0 && y < y1 && z > z0 && z < z1)) keep.push(i);
+    }
+    if (keep.length * 3 === pos.count) return;
+    const out = new THREE.BufferGeometry();
+    for (const [name, attr] of Object.entries(geo.attributes)) {
+      const n = attr.itemSize, arr = new Float32Array(keep.length * 3 * n);
+      let j = 0;
+      for (const i of keep) for (let v = 0; v < 3; v++) for (let k = 0; k < n; k++) arr[j++] = attr.getComponent(i + v, k);
+      out.setAttribute(name, new THREE.BufferAttribute(arr, n));
+    }
+    out.computeBoundingBox(); out.computeBoundingSphere();
+    o.geometry = out;
+  });
+}
+
 function prepare(obj, def) {
   if (def.crop === 'p38') cropP38(obj);
   if (def.keep || def.drop) {
@@ -302,6 +333,7 @@ function prepare(obj, def) {
   // Models point down +X. Rotate so the barrel points down -Z (downloaded models: detect the barrel).
   const holder = new THREE.Group();
   obj.rotation.y = def.auto ? autoYaw(obj) + (def.flip ? Math.PI : 0) : def.flip ? -Math.PI / 2 : Math.PI / 2;
+  if (def.level) obj.rotation.x = def.level; // (Euler XYZ: applied after the yaw, so it pitches the gun about its own side axis)
   holder.add(obj);
   holder.updateMatrixWorld(true);
   let box = new THREE.Box3().setFromObject(holder);
@@ -318,6 +350,7 @@ function prepare(obj, def) {
   const oy = gunTop(obj, def, box) - 0.06;
   obj.position.set(-ox, -oy, -oz);
   holder.updateMatrixWorld(true);
+  if (def.cut) cutBoxes(obj, def.cut);
   box = new THREE.Box3().setFromObject(holder);
   // muzzle: centre of the vertices at the very front of the gun
   const front = box.min.z;
@@ -334,6 +367,9 @@ function prepare(obj, def) {
   });
   const muzzle = n ? pts.divideScalar(n) : new THREE.Vector3(0, 0.03, front);
   muzzle.z = front - 0.01;
+  // centre the gun on its bore (not its bounding box, which side parts can skew) so the sights
+  // line up when aiming and both hands meet the gun where they should
+  if (def.glb && Math.abs(muzzle.x) > 0.002) { obj.position.x -= muzzle.x; muzzle.x = 0; holder.updateMatrixWorld(true); }
   return { group: holder, muzzle, top: gunTop(obj, def, box) };
 }
 

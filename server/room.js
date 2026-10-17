@@ -638,6 +638,7 @@ export class Room {
   // ---------------------------------------------------------------- player health
   hurtPlayer(p, dmg, z) {
     if (p.downed || p.dead) return;
+    if (process.env.DEV_GOD) return; // test mode: players cannot be hurt
     p.hp -= dmg;
     p.lastHurt = this.time;
     this.send(p, { t: 'hurt', hp: Math.max(0, p.hp), from: [r2(z.x), r2(z.z)] });
