@@ -58,8 +58,11 @@ export class GamepadControls {
         this.menuNav(btn, down, ly);
       } else {
         if (down(1)) this.crouch = !this.crouch;
-        if (down(10)) this.sprint = !this.sprint;
-        if (Math.hypot(lx, ly) < 0.3) this.sprint = false;
+        if (down(10)) {
+          if (this.sprint && !this.tac) this.tac = true; // second click while sprinting: tactical sprint
+          else { this.sprint = !this.sprint; this.tac = false; }
+        }
+        if (Math.hypot(lx, ly) < 0.3) { this.sprint = false; this.tac = false; }
         if (down(2)) a.useOrReload(true);
         if (up(2)) a.useOrReload(false);
         if (down(3)) a.swap();
@@ -70,7 +73,7 @@ export class GamepadControls {
         a.trigger(gp.buttons[7].value > 0.3);
         a.ads(gp.buttons[6].value > 0.35);
         a.scoreboard(btn[8] || btn[12]);
-        out = { move: [lx, -ly], look: [rx, ry], jump: btn[0], crouch: this.crouch, sprint: this.sprint };
+        out = { move: [lx, -ly], look: [rx, ry], jump: btn[0], crouch: this.crouch, sprint: this.sprint, tac: this.tac };
       }
     } else {
       this.menuNav(btn, down, ly);

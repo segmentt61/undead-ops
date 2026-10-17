@@ -24,6 +24,15 @@ export class LocalPlayer {
     this.shake = 0;
     this.stepAcc = 0;
     this.landKick = 0;
+    this.tacSprint = false;  // tactical sprint (double-tap sprint)
+    this.tacWant = false;
+    this.stamina = 1;
+    this.staminaWait = 0;
+    this.sprintHeld = false;
+    this.tapClock = 9;
+    this.roll = 0;           // camera tilt when strafing / sprinting
+    this.idleT = 0;          // idle camera sway (Lissajous curve)
+    this.adsK = 0;
   }
 
   spawn(x, z, yaw = 0) {
@@ -114,8 +123,27 @@ export class LocalPlayer {
     const wantCrouch = input.crouch && !this.downed;
     this.crouch = wantCrouch;
     const moving = input.f !== 0 || input.r !== 0;
+    this.adsK = ads;
     this.sprinting = !this.downed && input.sprint && input.f > 0 && !wantCrouch && ads < 0.3;
-    let speed = this.downed ? C.DOWNED_SPEED : wantCrouch ? C.CROUCH_SPEED : this.sprinting ? C.SPRINT_SPEED : C.PLAYER_SPEED;
+    // tactical sprint: tap sprint twice quickly (or press the pad's sprint again while sprinting)
+    // (timed from letting go of sprint, so a quick re-press while running counts)
+    this.tapClock += dt;
+    if (input.sprint && !this.sprintHeld && this.tapClock < 0.35 && this.stamina > 0.25 && input.f > 0) this.tacWant = true;
+    if (!input.sprint && this.sprintHeld) this.tapClock = 0;
+    this.sprintHeld = !!input.sprint;
+    if (input.tac && !this.tacHeld && this.stamina > 0.25) this.tacWant = true;
+    this.tacHeld = !!input.tac;
+    if (!this.sprinting && !(this.tapClock < 0.35 && input.f > 0)) this.tacWant = false;
+    this.tacSprint = this.sprinting && this.tacWant && this.onGround;
+    if (this.tacSprint) {
+      this.stamina -= dt / C.TAC_SPRINT_TIME;
+      this.staminaWait = 1.2;
+      if (this.stamina <= 0) { this.stamina = 0; this.tacWant = false; }
+    } else {
+      this.staminaWait -= dt;
+      if (this.staminaWait <= 0) this.stamina = Math.min(1, this.stamina + dt / 4);
+    }
+    let speed = this.downed ? C.DOWNED_SPEED : wantCrouch ? C.CROUCH_SPEED : this.tacSprint ? C.TAC_SPRINT_SPEED : this.sprinting ? C.SPRINT_SPEED : C.PLAYER_SPEED;
     speed *= moveMult * (1 - ads * 0.4);
 
     // wish direction in world space
@@ -125,10 +153,24 @@ export class LocalPlayer {
     const wl = Math.hypot(wx, wz);
     if (wl > 0) { wx /= wl; wz /= wl; }
 
-    const accel = this.onGround ? 14 : 3.5;
-    const k = Math.min(1, accel * dt);
-    this.vel.x += (wx * speed - this.vel.x) * k;
-    this.vel.z += (wz * speed - this.vel.z) * k;
+    // Quake / Call of Duty movement: ground friction, then accelerate along the wish direction
+    // only up to the wish speed (so momentum carries through jumps and you can air-strafe a bit)
+    if (this.onGround) {
+      const hs0 = Math.hypot(this.vel.x, this.vel.z);
+      if (hs0 > 0) {
+        const drop = Math.max(hs0, C.STOP_SPEED) * C.MOVE_FRICTION * dt;
+        const k = Math.max(0, hs0 - drop) / hs0;
+        this.vel.x *= k; this.vel.z *= k;
+      }
+    }
+    if (wl > 0) {
+      const accel = !this.onGround ? C.AIR_ACCEL : C.MOVE_ACCEL * (this.tacSprint ? 0.6 : this.sprinting ? 0.75 : 1);
+      const add = speed - (this.vel.x * wx + this.vel.z * wz);
+      if (add > 0) {
+        const a = Math.min(add, accel * dt * speed);
+        this.vel.x += a * wx; this.vel.z += a * wz;
+      }
+    }
 
     if (input.jump && this.onGround && !this.downed && !wantCrouch) {
       this.vel.y = C.JUMP_VELOCITY;
@@ -151,6 +193,8 @@ export class LocalPlayer {
     if (this.pos.y <= g) {
       this.pos.y = g;
       if (!wasGround && fallSpeed < -4) { this.landKick = Math.min(0.12, -fallSpeed * 0.012); audio.footstep(0.35); }
+      // landing from a hop above sprint speed bleeds some of it (bunny hopping stays modest)
+      if (!wasGround && Math.hypot(this.vel.x, this.vel.z) > C.SPRINT_SPEED) { this.vel.x *= 0.85; this.vel.z *= 0.85; }
       this.vel.y = 0;
       this.onGround = true;
     } else {
@@ -171,6 +215,11 @@ export class LocalPlayer {
       const stride = this.sprinting ? 2.4 : 1.9;
       if (this.stepAcc > stride) { this.stepAcc = 0; audio.footstep(this.sprinting ? 0.3 : 0.2); }
     }
+    // camera tilt: lean into strafes, more while sprinting; a little rock during tactical sprint
+    const tilt = this.downed ? 0 : -input.r * (this.tacSprint ? 0.045 : this.sprinting ? 0.03 : 0.014) * (1 - ads * 0.7)
+      + (this.tacSprint ? Math.sin(this.bobT) * 0.012 : 0);
+    this.roll += (tilt - this.roll) * Math.min(1, dt * 6);
+    this.idleT += dt * (0.6 + hs * 0.12);
     this.recoil *= Math.exp(-dt * 9);
     this.shake *= Math.exp(-dt * 6);
     this.landKick *= Math.exp(-dt * 10);
@@ -186,8 +235,10 @@ export class LocalPlayer {
       this.pos.z - Math.sin(this.yaw) * bobX,
     );
     cam.rotation.order = 'YXZ';
-    cam.rotation.y = this.yaw + sx;
-    cam.rotation.x = this.pitch + this.recoil + sy;
-    cam.rotation.z = this.downed ? 0.25 : 0;
+    // idle sway along a Lissajous curve, almost gone while aiming down sights
+    const sw = 0.0022 * (1 - this.adsK * 0.85);
+    cam.rotation.y = this.yaw + sx + Math.sin(this.idleT) * sw;
+    cam.rotation.x = this.pitch + this.recoil + sy + Math.sin(this.idleT * 2) * sw * 0.5;
+    cam.rotation.z = (this.downed ? 0.25 : 0) + this.roll;
   }
 }

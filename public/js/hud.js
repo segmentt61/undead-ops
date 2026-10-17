@@ -176,6 +176,19 @@ export class HUD {
   }
 
   // ---- crosshair / hit feedback
+  /** Tactical sprint stamina, a thin bar under the crosshair while it is used or refilling. */
+  stamina(v, active) {
+    if (!this.stamBar) {
+      this.stamBar = document.createElement('div');
+      this.stamBar.id = 'stamina';
+      this.stamBar.innerHTML = '<i></i>';
+      document.getElementById('hud').appendChild(this.stamBar);
+    }
+    const show = active || v < 0.999;
+    if (show !== this.stamShown) { this.stamBar.classList.toggle('on', show); this.stamShown = show; }
+    if (show) this.stamBar.firstChild.style.transform = `scaleX(${v.toFixed(3)})`;
+  }
+
   crosshair(gapPx, visible) {
     const c = $('crosshair');
     c.style.opacity = visible ? 1 : 0;

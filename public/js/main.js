@@ -13,6 +13,7 @@ import { audio } from './audio.js';
 import { PostFX, QUALITY } from './post.js';
 import { loadGunModels } from './assets.js';
 import { loadArms } from './arms.js';
+import { loadFpHands } from './fparms.js';
 import { loadRig, setRigLowRes } from './rig.js';
 import { GamepadControls, TouchControls, isTouchDevice } from './controls.js';
 import { MenuBackdrop } from './menu3d.js';
@@ -319,6 +320,7 @@ async function loadAssets() {
     loadGunModels((p) => { g = p; show(); }),
     audio.loadSamples((p) => { a = p; show(); }),
     loadArms().catch((e) => console.warn('arms failed', e)),
+    loadFpHands().catch((e) => console.warn('hands failed', e)),
     loadRig().then(() => { c = 1; show(); }).catch((e) => console.warn('characters failed', e)),
     texturesReady,
   ]);
@@ -1081,9 +1083,10 @@ function step(dt) {
     let jump = kbOn && input.keys.has('Space');
     let sprint = kbOn && (input.keys.has('ShiftLeft') || input.keys.has('ShiftRight'));
     let crouch = kbOn && (input.keys.has('KeyC') || input.keys.has('ControlLeft'));
+    let tac = false;
     if (inputOn && pad) {
       f = clamp1(f + pad.move[1]); r = clamp1(r + pad.move[0]);
-      jump = jump || pad.jump; sprint = sprint || pad.sprint; crouch = crouch || pad.crouch;
+      jump = jump || pad.jump; sprint = sprint || pad.sprint; crouch = crouch || pad.crouch; tac = tac || !!pad.tac;
       // right stick: expo curve, slower while aiming, aim assist slows the turn over a zombie
       const curve = (v) => Math.sign(v) * Math.pow(Math.abs(v), 1.8);
       const ads = w.adsEase();
@@ -1110,7 +1113,8 @@ function step(dt) {
       autoFiring = want;
       if (want) sprint = false;
     }
-    p.update(dt, { f, r, jump, sprint: sprint && !w.trigger, crouch }, w.adsT, slot ? slot.stats.move : 1);
+    p.update(dt, { f, r, jump, sprint: sprint && !w.trigger, tac, crouch }, w.adsT, slot ? slot.stats.move : 1);
+    hud.stamina(p.stamina, p.tacSprint);
     p.applyCamera(camera);
     w.update(dt);
     audio.setListener(p.pos.x, p.pos.z, p.yaw);

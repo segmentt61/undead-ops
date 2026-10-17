@@ -90,6 +90,14 @@ export const PLAYER_SPEED = 5.2;
 export const SPRINT_SPEED = 7.6;
 export const CROUCH_SPEED = 2.6;
 export const DOWNED_SPEED = 0.9;
+// Call of Duty style movement (Quake-derived ground/air acceleration; values after TheHyper-Dev's
+// "Call of Duty Movement in Godot 4", MIT): tactical sprint is a short, faster dash on a stamina bar
+export const TAC_SPRINT_SPEED = 8.9;
+export const TAC_SPRINT_TIME = 3;     // seconds of stamina
+export const MOVE_ACCEL = 12;
+export const MOVE_FRICTION = 6;
+export const STOP_SPEED = 3;
+export const AIR_ACCEL = 3;
 export const JUMP_VELOCITY = 6.7;
 export const GRAVITY = 18;
 export const PLAYER_RADIUS = 0.32;

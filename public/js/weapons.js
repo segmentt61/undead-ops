@@ -15,7 +15,7 @@ import { PERKS } from '/shared/config.js';
 import * as MD from './models.js';
 import * as CH from './characters.js';
 import { FpArms, armsLoaded } from './arms.js';
-import { SoldierArms, fpArmsReady } from './fparms.js';
+import { SoldierArms, fpArmsReady, FpHands, fpHandsReady } from './fparms.js';
 import { audio } from './audio.js';
 import { GUN_DEFS } from './assets.js';
 
@@ -83,7 +83,7 @@ export class Weapons {
     this.viewScene.add(this.vFlash);
     this.holder = new THREE.Group();
     this.viewScene.add(this.holder);
-    this.arms = fpArmsReady() ? new SoldierArms() : armsLoaded() ? new FpArms() : null;
+    this.arms = fpHandsReady() ? new FpHands() : fpArmsReady() ? new SoldierArms() : armsLoaded() ? new FpArms() : null;
     if (this.arms) this.viewScene.add(this.arms.root);
     this.knifeVM = buildViewModel('knife', false);
     this.knifeVM.root.visible = false;
@@ -116,6 +116,7 @@ export class Weapons {
     this.kick = 0;
     this.bloom = 0;
     this.sprintT = 0;
+    this.tacT = 0;
     this.swayX = 0; this.swayY = 0;
     this.lookDX = 0; this.lookDY = 0;
     this.vm = null;
@@ -583,6 +584,7 @@ export class Weapons {
     const s = this.active();
     const sprint = p.sprinting && this.state === 'idle' ? 1 : 0;
     this.sprintT += (sprint - this.sprintT) * Math.min(1, dt * 9);
+    this.tacT += ((sprint && p.tacSprint ? 1 : 0) - this.tacT) * Math.min(1, dt * 8);
 
     this.swayX += (-this.lookDX * 0.0009 - this.swayX) * Math.min(1, dt * 10);
     this.swayY += (-this.lookDY * 0.0009 - this.swayY) * Math.min(1, dt * 10);
@@ -600,6 +602,16 @@ export class Weapons {
     h.position.y += -Math.abs(Math.sin(p.bobT)) * 0.014 * bob + this.swayY * 0.3 * swayK - this.sprintT * 0.04 - p.landKick * 0.4;
     h.position.z += this.kick * 0.05;
     h.rotation.set(this.kick * 0.09 + this.swayY * swayK - this.sprintT * 0.35, this.swayX * swayK + this.sprintT * 0.6, this.sprintT * 0.15 + (p.downed ? 0.15 : 0));
+    // tactical sprint: the gun swings up to the chest, muzzle high, like Modern Warfare
+    if (this.tacT > 0.001) {
+      const t = this.tacT;
+      h.rotation.x += t * 0.65;
+      h.rotation.y -= t * 0.35;
+      h.rotation.z += t * 0.45;
+      h.position.x -= t * 0.05;
+      h.position.y += t * 0.07;
+      h.position.z += t * 0.03;
+    }
     // handguns sit canted in at the hip so you see the slide, not just its back
     if (PISTOLS.includes(this.active()?.id)) { h.rotation.y += 0.12 * (1 - e); h.position.z += 0.06 * (1 - e); }
 

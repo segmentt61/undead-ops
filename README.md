@@ -63,7 +63,7 @@ Railway, Fly.io or any VPS work the same way (`npm install && npm start`, `PORT`
 | --- | --- |
 | WASD | Move |
 | Mouse / Left click / Right click | Aim / Fire / Aim down sights |
-| Shift | Sprint |
+| Shift | Sprint (double-tap: tactical sprint) |
 | Space | Jump |
 | C or Ctrl | Crouch |
 | R | Reload |
@@ -82,7 +82,7 @@ PlayStation symbols automatically.
 
 | Xbox | PlayStation | Action |
 | --- | --- | --- |
-| Left stick / L3 | Left stick / L3 | Move / toggle sprint |
+| Left stick / L3 | Left stick / L3 | Move / toggle sprint (click again: tactical sprint) |
 | Right stick | Right stick | Look |
 | RT / LT | R2 / L2 | Fire / Aim down sights |
 | A | ✕ | Jump (menus: select) |
@@ -208,7 +208,10 @@ Safari starts on Medium. Resolution scales down automatically when the frame rat
   [AR-15 style rifle](https://sketchfab.com/3d-models/50d33435445e439c95e3b36e9d4bd798) by jeandiz,
   [Submachine Gun](https://sketchfab.com/3d-models/85d319704eba40678af7e64df81ec58d) by jw202471,
   [Bren Mk1 LMG](https://sketchfab.com/3d-models/df74f7e3720d469e8bf425407e7ddc34) by maximiliaanmaene
-- First-person arms: cut from the Rocketbox Military_Male_01 avatar (MIT)
+- First-person hands: [First Person hands rigged](https://sketchfab.com/3d-models/547a45535f0c4fe787948f7a7a6a88db) by David Fischer (CC-BY 4.0),
+  shaded in-game as gloves and camo sleeves; fallback arms cut from the Rocketbox Military_Male_01 avatar (MIT)
+- Movement (Quake-style acceleration, tactical sprint with stamina, strafe tilt, idle sway) modelled on
+  [Call of Duty Movement in Godot 4](https://github.com/TheHyper-Dev/Call-of-Duty-Movement-in-Godot-4) by TheHyper-Dev (MIT)
 - Industrial metal round music: Butcher's Lair, Biolab and Cyborg Factory fight themes by
   [GTDStudio aka Palrom](https://opengameart.org/users/gtdstudio-aka-palrom) (OGA-BY 3.0),
   [Soul Ripper](https://opengameart.org/content/soul-ripper) by Alexandr Zhelanov (CC-BY 4.0),

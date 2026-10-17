@@ -434,3 +434,8 @@ body.touch #crosshair { --gap: 8px; }
 #introCard > div { min-height: 20px; }
 body.touch #introCard { bottom: auto; top: 30%; }
 body.touch #zoneLabel { top: 18%; font-size: 16px; }
+
+/* tactical sprint stamina */
+#stamina { position: absolute; left: 50%; top: calc(50% + 46px); width: 84px; height: 3px; margin-left: -42px; background: rgba(0,0,0,0.45); border-radius: 2px; opacity: 0; transition: opacity 0.25s; pointer-events: none; }
+#stamina.on { opacity: 1; }
+#stamina i { display: block; height: 100%; background: #e8d9a8; border-radius: 2px; transform-origin: left center; }
