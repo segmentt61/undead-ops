@@ -1,4 +1,4 @@
-// Loads external assets (CC0 gun models by Quaternius, recorded sounds) and prepares them for the game.
+// Loads external assets (scanned and CC-BY Sketchfab gun models, CC0 Quaternius fallbacks, recorded sounds) and prepares them for the game.
 import * as THREE from 'three';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { objectUV, wearDetail, pbrSurface } from './pbr.js';
@@ -35,19 +35,19 @@ function material(name) {
 
 // Which model each weapon uses, its real-world length (m) and where the grip sits (fraction from the rear).
 export const GUN_DEFS = {
-  m1911:    { file: 'Pistol_1', glb: 'service_pistol', crop: 'p38', len: 0.215, grip: 0.3 },
+  m1911:    { file: 'Pistol_1', glb: 'sf_m1911', dir: 'guns', auto: true, len: 0.216, grip: 0.24 },
   python:   { file: 'Revolver_2', len: 0.29, grip: 0.18 },
-  olympia:  { file: 'Shotgun_SawedOff', len: 0.66, grip: 0.24 },
-  stakeout: { file: 'Shotgun_2', len: 1.0, grip: 0.3 },
-  spas:     { file: 'Shotgun_1', len: 0.98, grip: 0.3 },
-  m14:      { file: 'AssaultRifle_2', len: 1.02, grip: 0.36 },
-  mp40:     { file: 'SubmachineGun_1', len: 0.5, grip: 0.3 },
-  mpl:      { file: 'SubmachineGun_4', len: 0.46, grip: 0.3 },
-  ak74u:    { file: 'AssaultRifle_1', glb: 'ak', dir: 'guns', keep: ['AK'], len: 0.86, grip: 0.36 },
-  m16:      { file: 'AssaultRifle2_1', len: 0.98, grip: 0.38 },
+  olympia:  { file: 'Shotgun_SawedOff', glb: 'sf_olympia', dir: 'guns', auto: true, len: 1.05, grip: 0.3 },
+  stakeout: { file: 'Shotgun_2', glb: 'sf_stakeout', dir: 'guns', auto: true, len: 1.0, grip: 0.28 },
+  spas:     { file: 'Shotgun_1', glb: 'sf_spas', dir: 'guns', auto: true, len: 1.0, grip: 0.28 },
+  m14:      { file: 'AssaultRifle_2', glb: 'sf_m14', dir: 'guns', auto: true, len: 1.1, grip: 0.33 },
+  mp40:     { file: 'SubmachineGun_1', glb: 'sf_mp40', dir: 'guns', auto: true, len: 0.83, grip: 0.33 },
+  mpl:      { file: 'SubmachineGun_4', glb: 'sf_mpl', dir: 'guns', auto: true, len: 0.36, grip: 0.17 },
+  ak74u:    { file: 'AssaultRifle_1', glb: 'sf_ak', dir: 'guns', auto: true, drop: ['platform_plank_Planks_0'], lowCut: 0.05, pitch: 0.236, len: 0.94, grip: 0.3 },
+  m16:      { file: 'AssaultRifle2_1', glb: 'sf_m16', dir: 'guns', auto: true, len: 1.0, grip: 0.37 },
   galil:    { file: 'AssaultRifle_4', len: 0.98, grip: 0.36 },
-  commando: { file: 'AssaultRifle2_4', len: 0.74, grip: 0.4 },
-  hk21:     { file: 'AssaultRifle_5', len: 1.05, grip: 0.36 },
+  commando: { file: 'AssaultRifle2_4', glb: 'sf_commando', dir: 'guns', auto: true, drop: ['bullets_bullets_0', 'gps_gps_0', 'acog_optic001_0'], adsZ: 0.2, len: 0.84, grip: 0.33 },
+  hk21:     { file: 'AssaultRifle_5', glb: 'sf_hk21', dir: 'guns', auto: true, topRange: [0, 0.28], adsX: 0.1, len: 1.15, grip: 0.31 },
   dragunov: { file: 'SniperRifle_6', glb: 'bolt_rifle', dir: 'guns', len: 1.18, grip: 0.36 },
   knife:    { file: 'Bayonet', len: 0.3, grip: 0.2 },
 };
@@ -160,20 +160,137 @@ function cropP38(obj) {
   });
 }
 
+// Find which way a downloaded gun points: the long horizontal axis, and of its two ends the
+// thinner one (the barrel; the stock and grip end is taller). Returns the yaw that turns it to -Z.
+function autoYaw(obj) {
+  obj.updateMatrixWorld(true);
+  const pts = [];
+  const v = new THREE.Vector3();
+  obj.traverse((o) => {
+    if (!o.isMesh) return;
+    const pos = o.geometry.attributes.position;
+    const step = Math.max(1, Math.floor(pos.count / 4000));
+    for (let i = 0; i < pos.count; i += step) pts.push(v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld).clone());
+  });
+  const box = new THREE.Box3().setFromPoints(pts);
+  const size = box.getSize(new THREE.Vector3());
+  const axis = size.x >= size.z ? 'x' : 'z';
+  const lo = box.min[axis], len = size[axis];
+  const ext = (a, b) => { let mn = Infinity, mx = -Infinity; for (const p of pts) { const t = (p[axis] - lo) / len; if (t >= a && t <= b) { mn = Math.min(mn, p.y); mx = Math.max(mx, p.y); } } return mx - mn; };
+  const barrelAtMax = ext(0.88, 1) < ext(0, 0.12);
+  if (axis === 'x') return barrelAtMax ? Math.PI / 2 : -Math.PI / 2;
+  return barrelAtMax ? Math.PI : 0;
+}
+
+// Remove loose pieces lying on a display stand: connected parts that never rise above `h` (model units).
+function cutLow(obj, h) {
+  obj.updateMatrixWorld(true);
+  obj.traverse((o) => {
+    if (!o.isMesh || !o.geometry.index) return;
+    const geo = o.geometry, pos = geo.attributes.position, idx = geo.index, mw = o.matrixWorld;
+    const parent = new Int32Array(pos.count).map((_, i) => i);
+    const find = (x) => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+    for (let i = 0; i < idx.count; i += 3) { const r0 = find(idx.getX(i)); parent[find(idx.getX(i + 1))] = r0; parent[find(idx.getX(i + 2))] = r0; }
+    const top = new Map(), v = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) { const r = find(i); v.fromBufferAttribute(pos, i).applyMatrix4(mw); top.set(r, Math.max(top.get(r) ?? -Infinity, v.y)); }
+    const out = [];
+    for (let i = 0; i < idx.count; i += 3) if (top.get(find(idx.getX(i))) > h) out.push(idx.getX(i), idx.getX(i + 1), idx.getX(i + 2));
+    const cut = geo.clone();
+    cut.setIndex(out);
+    const ng = cut.toNonIndexed();
+    ng.computeBoundingBox(); ng.computeBoundingSphere();
+    o.geometry = ng;
+  });
+}
+
+// Height of the sight line: the top of the gun, or only of part of it when something tall (a top
+// magazine) sits over the receiver. `topRange` is a fraction of the length from the rear.
+function gunTop(obj, def, box) {
+  if (!def.topRange) return box.max.y;
+  const [a, b] = def.topRange, len = box.max.z - box.min.z;
+  let top = -Infinity;
+  const v = new THREE.Vector3();
+  obj.traverse((o) => {
+    if (!o.isMesh) return;
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      const t = (box.max.z - v.z) / len;
+      if (t >= a && t <= b) top = Math.max(top, v.y);
+    }
+  });
+  return top > -Infinity ? top : box.max.y;
+}
+
+// Some downloads are skinned (rigged for an animation). Bake the pose into a plain mesh so the
+// gun scales and moves like any other object.
+function unskin(obj) {
+  obj.updateMatrixWorld(true);
+  const list = [];
+  obj.traverse((o) => { if (o.isSkinnedMesh) list.push(o); });
+  for (const o of list) {
+    o.skeleton.update();
+    const geo = o.geometry.clone();
+    // compressed (quantised) attributes cannot hold the posed values: give them float storage
+    const src = geo.attributes.position, srcN = geo.attributes.normal;
+    const pos = new THREE.Float32BufferAttribute(new Float32Array(src.count * 3), 3);
+    const nrm = srcN ? new THREE.Float32BufferAttribute(new Float32Array(srcN.count * 3), 3) : null;
+    const si = geo.attributes.skinIndex, sw = geo.attributes.skinWeight;
+    const v = new THREE.Vector3(), m = new THREE.Matrix4(), bm = new THREE.Matrix4(), nm = new THREE.Matrix3();
+    const bones = o.skeleton.boneMatrices;
+    for (let i = 0; i < pos.count; i++) {
+      o.getVertexPosition(i, v);
+      pos.setXYZ(i, v.x, v.y, v.z);
+      if (!nrm) continue;
+      // the vertex's blended bone matrix, for the normal
+      const e = m.elements.fill(0);
+      for (let k = 0; k < 4; k++) {
+        const w = sw.getComponent(i, k);
+        if (!w) continue;
+        bm.fromArray(bones, si.getComponent(i, k) * 16);
+        for (let j = 0; j < 16; j++) e[j] += bm.elements[j] * w;
+      }
+      m.premultiply(o.bindMatrixInverse).multiply(o.bindMatrix);
+      nm.getNormalMatrix(m);
+      v.fromBufferAttribute(srcN, i).applyMatrix3(nm).normalize();
+      nrm.setXYZ(i, v.x, v.y, v.z);
+    }
+    geo.setAttribute('position', pos);
+    if (nrm) geo.setAttribute('normal', nrm);
+    geo.deleteAttribute('skinIndex');
+    geo.deleteAttribute('skinWeight');
+    geo.computeBoundingBox(); geo.computeBoundingSphere();
+    const mesh = new THREE.Mesh(geo, o.material);
+    mesh.name = o.name;
+    mesh.position.copy(o.position); mesh.quaternion.copy(o.quaternion); mesh.scale.copy(o.scale);
+    o.parent.add(mesh);
+    o.parent.remove(o);
+  }
+}
+
 function prepare(obj, def) {
   if (def.crop === 'p38') cropP38(obj);
-  if (def.keep) {
-    // drop the display extras that ship with the model (loose rounds, ammo boxes…)
+  if (def.keep || def.drop) {
+    // drop the display extras that ship with the model (loose rounds, ammo boxes, stands…)
     const drop = [];
-    obj.traverse((o) => { if (o.isMesh && !def.keep.includes(o.name)) drop.push(o); });
+    obj.traverse((o) => { if (o.isMesh && (def.keep ? !def.keep.includes(o.name) : def.drop.includes(o.name))) drop.push(o); });
     for (const o of drop) o.parent.remove(o);
+  }
+  if (def.lowCut) cutLow(obj, def.lowCut);
+  if (def.pitch) {
+    // a model propped up at an angle: level it before working out where the barrel points
+    const tilt = new THREE.Group();
+    tilt.rotation.x = def.pitch;
+    for (const c of [...obj.children]) tilt.add(c);
+    obj.add(tilt);
   }
   obj.traverse((o) => {
     if (!o.isMesh) return;
     if (def.glb) {
       // scanned models are clean and keep their own PBR textures (the AK's varnish is toned down a bit)
       o.castShadow = true;
-      if (def.glb === 'ak' && !o.material.userData.toned) { o.material = o.material.clone(); o.material.color.multiplyScalar(0.62); o.material.userData.toned = true; }
+      // cut-out (alpha-tested) rather than blended, so parts sort correctly and nothing glows through
+      if (o.material.transparent) { o.material = o.material.clone(); o.material.transparent = false; o.material.alphaTest = 0.5; o.material.depthWrite = true; }
       return;
     }
     o.geometry = cleanGeometry(o.geometry);
@@ -182,9 +299,9 @@ function prepare(obj, def) {
     o.material = Array.isArray(o.material) ? repl : repl[0];
     o.castShadow = true;
   });
-  // Models point down +X. Rotate so the barrel points down -Z.
+  // Models point down +X. Rotate so the barrel points down -Z (downloaded models: detect the barrel).
   const holder = new THREE.Group();
-  obj.rotation.y = def.flip ? -Math.PI / 2 : Math.PI / 2;
+  obj.rotation.y = def.auto ? autoYaw(obj) + (def.flip ? Math.PI : 0) : def.flip ? -Math.PI / 2 : Math.PI / 2;
   holder.add(obj);
   holder.updateMatrixWorld(true);
   let box = new THREE.Box3().setFromObject(holder);
@@ -198,7 +315,7 @@ function prepare(obj, def) {
   const rearZ = box.max.z, frontZ = box.min.z;
   const ox = (box.min.x + box.max.x) / 2;
   const oz = rearZ - def.grip * def.len;
-  const oy = box.max.y - 0.06;
+  const oy = gunTop(obj, def, box) - 0.06;
   obj.position.set(-ox, -oy, -oz);
   holder.updateMatrixWorld(true);
   box = new THREE.Box3().setFromObject(holder);
@@ -217,7 +334,7 @@ function prepare(obj, def) {
   });
   const muzzle = n ? pts.divideScalar(n) : new THREE.Vector3(0, 0.03, front);
   muzzle.z = front - 0.01;
-  return { group: holder, muzzle, top: box.max.y };
+  return { group: holder, muzzle, top: gunTop(obj, def, box) };
 }
 
 export async function loadGunModels(onProgress) {
@@ -234,7 +351,7 @@ export async function loadGunModels(onProgress) {
         if (def.glb) {
           const gl = new GLTFLoader();
           gl.setMeshoptDecoder(MeshoptDecoder);
-          src = gl.loadAsync(`/assets/${def.dir || 'props'}/${def.glb}.glb`).then((g) => g.scene);
+          src = gl.loadAsync(`/assets/${def.dir || 'props'}/${def.glb}.glb`).then((g) => { unskin(g.scene); return g.scene; });
         } else src = loader.loadAsync(`/assets/guns/${def.file}.obj`);
         cacheByFile.set(key, src);
       }

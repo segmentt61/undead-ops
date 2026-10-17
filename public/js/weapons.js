@@ -17,6 +17,7 @@ import * as CH from './characters.js';
 import { FpArms, armsLoaded } from './arms.js';
 import { SoldierArms, fpArmsReady } from './fparms.js';
 import { audio } from './audio.js';
+import { GUN_DEFS } from './assets.js';
 
 const HIP = new THREE.Vector3(0.13, -0.125, -0.42);
 const PISTOLS = ['m1911', 'python', 'ray_gun'];
@@ -65,7 +66,7 @@ function buildViewModel(id, pap) {
   petals.visible = false;
   root.add(petals);
   root.traverse((o) => { if (o.isMesh) o.frustumCulled = false; });
-  return { root, muzzle, flash, top: (top ?? 0.08) * vmScale };
+  return { root, muzzle, flash, top: (top ?? 0.08) * vmScale, adsX: GUN_DEFS[id]?.adsX || 0, adsZ: GUN_DEFS[id]?.adsZ || 0 };
 }
 
 export class Weapons {
@@ -591,7 +592,7 @@ export class Weapons {
     const h = this.holder;
     const bob = p.bobAmt * (1 - e * 0.85);
     const sightY = this.vm ? this.vm.top - 0.012 : 0.07;
-    const ads = new THREE.Vector3(0, -sightY, -0.44);
+    const ads = new THREE.Vector3(this.vm ? this.vm.adsX : 0, -sightY, -0.44 + (this.vm ? this.vm.adsZ : 0));
     const vfov = 60 - 16 * e;
     if (Math.abs(this.viewCam.fov - vfov) > 0.01) { this.viewCam.fov = vfov; this.viewCam.updateProjectionMatrix(); }
     h.position.lerpVectors(HIP, ads, e);

@@ -47,6 +47,13 @@ export class SoldierArms {
       B[`${side}Arm`].scale.setScalar(1.22);
       B[`${side}Hand`].scale.setScalar(1 / 1.22);
     }
+    // ...and shoulders brought forward, as in most shooters, so a rifle's handguard is in reach
+    this.rig.root.updateMatrixWorld(true);
+    for (const side of ['Left', 'Right']) {
+      const up = B[`${side}Arm`];
+      const p = up.getWorldPosition(V()).add(new THREE.Vector3(side === 'Left' ? 0.03 : 0, 0.02, -0.22));
+      up.position.copy(up.parent.worldToLocal(p));
+    }
     this.pose = POSES.rifle;
     this.targets = { R: { pos: V(), quat: new THREE.Quaternion() }, L: { pos: V(), quat: new THREE.Quaternion() } };
     this.curl = { R: POSES.rifle.right.curl, L: POSES.rifle.left.curl };

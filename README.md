@@ -171,9 +171,9 @@ Pause menu (Esc) → **Graphics**:
 Safari starts on Medium. Resolution scales down automatically when the frame rate drops
 (shown top-right as `% res`).
 
-## Credits (CC0 / public domain, characters MIT)
+## Credits (CC0 / public domain, characters MIT, guns and some music CC-BY)
 
-- Gun models: [Ultimate Gun Pack by Quaternius](https://opengameart.org/content/low-poly-guns-pack)
+- Gun models (Python, Galil, knife, fallbacks): [Ultimate Gun Pack by Quaternius](https://opengameart.org/content/low-poly-guns-pack)
 - Gunshots: [The Free Firearm Sound Library](https://opengameart.org/content/the-free-firearm-sound-library)
 - Zombie voices: [Zombies Sound Pack by artisticdude](https://opengameart.org/content/zombies-sound-pack)
 - Reloads: [Gun Reload Sounds by SpringySpringo](https://opengameart.org/content/gun-reload-sounds)
@@ -189,12 +189,25 @@ Safari starts on Medium. Resolution scales down automatically when the frame rat
 - Wall, floor and ceiling materials: [ambientCG](https://ambientcg.com) — Bricks097, Bricks094, Concrete012,
   PaintedPlaster017, Tiles141, Tiles105, Tiles074, Tiles139, WoodFloor043, Planks039, CorrugatedSteel005,
   OfficeCeiling001, Asphalt031, Ground110
-- Props, lamps, cars and the starting pistol: photo-scanned CC0 models from [Poly Haven](https://polyhaven.com/models) —
+- Props, lamps and cars: photo-scanned CC0 models from [Poly Haven](https://polyhaven.com/models) —
   wooden/military crates, barrels, cardboard boxes, ammo boxes, steel shelves, tables, office desk, bed frames, bench,
   generator, propane tank, tool cart and chest, drawer cabinet, trash bags and can, covered car, potted plant, wheelchair,
   stove, drill press, projector, cement bags, tyre, school chair, utility box, laptop, industrial / caged / fluorescent /
-  street lamps, service pistol. Optimised with [glTF-Transform](https://gltf-transform.dev) (meshopt + WebP).
-- AK-47: [AK by loafbrr](https://opengameart.org/content/ak) (CC0); scoped bolt-action rifle: [Poly Haven](https://polyhaven.com/a/bolt_action_rifle_7_62) (CC0)
+  street lamps. Optimised with [glTF-Transform](https://gltf-transform.dev) (meshopt + WebP).
+- Scoped bolt-action rifle: [Poly Haven](https://polyhaven.com/a/bolt_action_rifle_7_62) (CC0)
+- Gun models from Sketchfab, all [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/), compressed with glTF-Transform
+  (`public/assets/guns/sf_*.glb`; the AK's display plank and the AR-15's scope, rounds and GPS were removed):
+  [Colt M1911](https://sketchfab.com/3d-models/26adfd631730494ab0fc80c806eada77) by FrenchBaguette,
+  [Double Barrel Shotgun](https://sketchfab.com/3d-models/04741a40f2224cffafc343b0236d5bbe) by Pepego,
+  [Remington 870 (PBR|GR)](https://sketchfab.com/3d-models/26e37df4c38c4e8a9da8adeb4b66bff6) by tris09,
+  [The Franchi SPAS-12](https://sketchfab.com/3d-models/dfb4e1671b5b49e7b8a54cd120fc4d9f) and
+  [M14 RIFLE](https://sketchfab.com/3d-models/94920332fc7a4d63939b88a8a54baead) by ecler,
+  [WW2 German MP40](https://sketchfab.com/3d-models/527929dafda34929a1e87031c8ddf689) by Tactical_Beard,
+  [AK74M Assault Rifle](https://sketchfab.com/3d-models/8eea0d04d81b4476bb36bf7e6cfc389c) by creationwasteland,
+  [M16 Assault Rifle](https://sketchfab.com/3d-models/339d0f7b21024387853dd926a5d51b50) and
+  [AR-15 style rifle](https://sketchfab.com/3d-models/50d33435445e439c95e3b36e9d4bd798) by jeandiz,
+  [Submachine Gun](https://sketchfab.com/3d-models/85d319704eba40678af7e64df81ec58d) by jw202471,
+  [Bren Mk1 LMG](https://sketchfab.com/3d-models/df74f7e3720d469e8bf425407e7ddc34) by maximiliaanmaene
 - First-person arms: cut from the Rocketbox Military_Male_01 avatar (MIT)
 - Industrial metal round music: Butcher's Lair, Biolab and Cyborg Factory fight themes by
   [GTDStudio aka Palrom](https://opengameart.org/users/gtdstudio-aka-palrom) (OGA-BY 3.0),

@@ -35,7 +35,7 @@ export const WEAPONS = {
     pap: { name: 'MPL-LF', dmg: 78, mag: 48, reserve: 288 },
   },
   ak74u: {
-    name: 'AK-47', cls: 'smg', mode: 'auto', dmg: 44, head: 2.5, rpm: 720, mag: 20, reserve: 160, reload: 2.0,
+    name: 'AK-74', cls: 'smg', mode: 'auto', dmg: 44, head: 2.5, rpm: 720, mag: 20, reserve: 160, reload: 2.0,
     spread: [2.8, 1.0], pen: 1, range: 32, recoil: 1.0, move: 1.02, sound: 'ak', cost: 1200,
     pap: { name: 'AK-74fu2', dmg: 95, mag: 40, reserve: 280 },
   },
@@ -66,7 +66,7 @@ export const WEAPONS = {
     pap: { name: 'Predator', dmg: 138, mag: 60, reserve: 360 },
   },
   hk21: {
-    name: 'HK21', cls: 'lmg', mode: 'auto', dmg: 72, head: 2.6, rpm: 640, mag: 125, reserve: 500, reload: 4.4,
+    name: 'Bren LMG', cls: 'lmg', mode: 'auto', dmg: 72, head: 2.6, rpm: 640, mag: 125, reserve: 500, reload: 4.4,
     spread: [3.4, 1.0], pen: 3, range: 60, recoil: 1.2, move: 0.88, sound: 'lmg', box: 9,
     pap: { name: 'H115 Oscillator', dmg: 150, reserve: 750 },
   },
